@@ -1608,11 +1608,61 @@
 
     /* ─── Relatórios ────────────────────────────────────────────────────────── */
     #view-relatorios,
-    #view-clientes {
+    #view-clientes,
+    #view-pagamentos {
       padding: var(--gap);
       overflow-y: auto;
       max-height: calc(100vh - 100px)
     }
+
+    /* ── Pagamentos ── */
+    .pag-resumo {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--gap);
+      margin-bottom: var(--gap)
+    }
+    @media (max-width: 700px) { .pag-resumo { grid-template-columns: 1fr 1fr } }
+
+    .pag-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-card)
+    }
+    .pag-card-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px
+    }
+    .pag-card-val {
+      display: block;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text)
+    }
+    .pag-card--pix   .pag-card-val { color: var(--c-pa) }
+    .pag-card--warn  .pag-card-val { color: var(--c-rej) }
+    .pag-card--cash  .pag-card-val { color: var(--c-done) }
+
+    .pag-section { margin-bottom: var(--gap) }
+
+    .pag-btn-confirm {
+      font-size: 11px; padding: 4px 10px;
+      background: var(--c-done); color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-weight: 700
+    }
+    .pag-btn-estorno {
+      font-size: 11px; padding: 4px 10px;
+      background: var(--c-rej); color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-weight: 700
+    }
+    .pag-btn-confirm:disabled, .pag-btn-estorno:disabled { opacity: .5; cursor: not-allowed }
 
     .rel-header {
       display: flex;
@@ -2352,6 +2402,7 @@
     <button class="tab-btn" id="tab-cardapio" onclick="switchTab('cardapio')">Cardápio</button>
     <button class="tab-btn" id="tab-relatorios" onclick="switchTab('relatorios')">Relatórios</button>
     <button class="tab-btn" id="tab-clientes" onclick="switchTab('clientes')">Clientes</button>
+    <button class="tab-btn" id="tab-pagamentos" onclick="switchTab('pagamentos')">Pagamentos</button>
     <button class="tab-btn" id="tab-configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
   </nav>
 
@@ -2649,6 +2700,91 @@
 
   </section>
 
+  <!-- ── Pagamentos ─────────────────────────────────────────────────────────── -->
+  <section id="view-pagamentos" style="display:none">
+
+    <!-- Resumo do dia -->
+    <div class="pag-resumo">
+      <div class="pag-card">
+        <span class="pag-card-label">Recebido hoje</span>
+        <span class="pag-card-val" id="pag-total">—</span>
+      </div>
+      <div class="pag-card pag-card--pix">
+        <span class="pag-card-label">PIX confirmado</span>
+        <span class="pag-card-val" id="pag-pix-total">—</span>
+      </div>
+      <div class="pag-card pag-card--cash">
+        <span class="pag-card-label">Dinheiro / Cartão</span>
+        <span class="pag-card-val" id="pag-cash-total">—</span>
+      </div>
+      <div class="pag-card pag-card--warn">
+        <span class="pag-card-label">Estornos pendentes</span>
+        <span class="pag-card-val" id="pag-estorno-count">—</span>
+      </div>
+    </div>
+
+    <!-- PIX aguardando pagamento -->
+    <div class="pag-section rel-table-wrap">
+      <div class="rel-table-head">
+        <span class="rel-table-title">PIX aguardando pagamento</span>
+        <span id="pag-pix-badge" style="font-size:12px;color:var(--light)"></span>
+      </div>
+      <div class="rel-table-scroll">
+        <table class="rel-table">
+          <thead><tr>
+            <th>#</th><th>Cliente</th><th>Telefone</th>
+            <th>Total</th><th>Expira em</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="pag-pix-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Estornos pendentes -->
+    <div class="pag-section rel-table-wrap">
+      <div class="rel-table-head">
+        <span class="rel-table-title">Estornos pendentes</span>
+        <span id="pag-ref-badge" style="font-size:12px;color:var(--light)"></span>
+      </div>
+      <div class="rel-table-scroll">
+        <table class="rel-table">
+          <thead><tr>
+            <th>#</th><th>Cliente</th><th>Telefone</th>
+            <th>Total PIX</th><th>Cancelado em</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="pag-ref-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="pag-section rel-table-wrap">
+      <div class="rel-table-head">
+        <span class="rel-table-title">Histórico de pagamentos</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="pag-hist-de" class="rel-input">
+          <span style="font-size:12px;color:var(--muted)">até</span>
+          <input type="date" id="pag-hist-ate" class="rel-input">
+          <button class="rel-apply" onclick="carregarHistoricoPag()">Filtrar</button>
+        </div>
+      </div>
+      <div class="rel-table-scroll">
+        <table class="rel-table">
+          <thead><tr>
+            <th>#</th><th>Cliente</th><th>Método</th>
+            <th>Pag. Status</th><th>Total</th><th>Pedido Status</th><th>Data</th>
+          </tr></thead>
+          <tbody id="pag-hist-body">
+            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--light)">
+              Selecione um período e clique em Filtrar
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
   <!-- ── Modal ──────────────────────────────────────────────────────────────── -->
   <div id="modal" style="display:none">
     <div class="modal-overlay" onclick="fecharModalFora(event)">
@@ -2855,6 +2991,11 @@
         }
         col.innerHTML = list.map(card).join('');
       });
+
+      // Atualiza aba de pagamentos em tempo real se estiver visível
+      if (document.getElementById('view-pagamentos').style.display !== 'none') {
+        renderPagamentos();
+      }
     }
 
     function formatTempo(dt) {
@@ -2973,7 +3114,7 @@
         return a('btn-finalizar', '✓ Entregue', 'finalizar');
       }
       if (status === 'REJECTED' && needsRefund) {
-        return a('btn-aceitar', '↩ Estorno feito', 'marcarEstorno');
+        return a('btn-aceitar', '↩ Realizar Estorno PIX', 'realizarEstorno');
       }
       return '';
     }
@@ -3005,7 +3146,15 @@
     const finalizar = n => acao(n, 'finalizar');
     const confirmarPix = n => acao(n, 'confirmar-pagamento');
     const cancelar = n => acao(n, 'cancelar');
-    const marcarEstorno = n => acao(n, 'marcar-estorno');
+    const realizarEstorno = async (numero) => {
+      const ok = confirm(
+        `⚠️ Confirmar estorno PIX do pedido #${numero}?\n\n` +
+        `O valor será devolvido ao cliente via Mercado Pago.\n` +
+        `Esta ação não pode ser desfeita.`
+      );
+      if (!ok) return;
+      await acao(numero, 'realizar-estorno');
+    };
     const reativar = n => acao(n, 'reativar');
 
     // Atualiza tempos relativos e countdown PIX a cada 30s
@@ -3054,7 +3203,7 @@
     // ══════════════════════════════════════════════════════════════════════════════
 
     function switchTab(tab) {
-      const TABS = ['operacoes', 'cardapio', 'relatorios', 'clientes', 'configuracoes'];
+      const TABS = ['operacoes', 'cardapio', 'relatorios', 'clientes', 'pagamentos', 'configuracoes'];
       TABS.forEach(t => document.getElementById(`tab-${t}`).classList.toggle('active', t === tab));
 
       document.querySelector('main.board').style.display = tab === 'operacoes' ? '' : 'none';
@@ -3062,6 +3211,7 @@
       document.getElementById('view-cardapio').style.display = tab === 'cardapio' ? '' : 'none';
       document.getElementById('view-relatorios').style.display = tab === 'relatorios' ? '' : 'none';
       document.getElementById('view-clientes').style.display = tab === 'clientes' ? '' : 'none';
+      document.getElementById('view-pagamentos').style.display = tab === 'pagamentos' ? '' : 'none';
       document.getElementById('view-configuracoes').style.display = tab === 'configuracoes' ? '' : 'none';
 
       if (tab === 'cardapio' && apiKey && !_cardapioCarregado) carregarCardapio();
@@ -3071,6 +3221,7 @@
         else carregarRelatorio();
       }
       if (tab === 'clientes' && apiKey) carregarClientes();
+      if (tab === 'pagamentos' && apiKey) renderPagamentos();
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -3412,6 +3563,187 @@
     }
 
     // ── Render ────────────────────────────────────────────────────────────────────
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    //  PAGAMENTOS
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    function renderPagamentos() {
+      if (!apiKey) return;
+
+      const pedidos = Object.values(state.pedidos);
+      const fmtR = v => `R$ ${parseFloat(v || 0).toFixed(2).replace('.', ',')}`;
+      const fmtDt = d => {
+        if (!d) return '—';
+        const dt = new Date(d.replace(' ', 'T') + 'Z');
+        return isNaN(dt) ? d : dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      };
+
+      // ── Resumo do dia ────────────────────────────────────────────────────────
+      const ativos     = pedidos.filter(p => p.status !== 'REJECTED');
+      const pixConf    = ativos.filter(p => p.paymentMethod === 'PIX' && p.paymentStatus === 'CONFIRMED');
+      const cashOrders = ativos.filter(p => p.paymentMethod === 'CASH');
+      const estornos   = pedidos.filter(p => p.needsRefund);
+
+      const totalPix  = pixConf.reduce((s, p) => s + p.total, 0);
+      const totalCash = cashOrders.reduce((s, p) => s + p.total, 0);
+
+      document.getElementById('pag-total').textContent       = fmtR(totalPix + totalCash);
+      document.getElementById('pag-pix-total').textContent   = fmtR(totalPix);
+      document.getElementById('pag-cash-total').textContent  = fmtR(totalCash);
+      document.getElementById('pag-estorno-count').textContent = estornos.length || '0';
+
+      // ── PIX aguardando pagamento ─────────────────────────────────────────────
+      const pixPend = pedidos
+        .filter(p => p.status === 'PENDING_PAYMENT')
+        .sort((a, b) => a.criadoEm > b.criadoEm ? 1 : -1);
+
+      document.getElementById('pag-pix-badge').textContent =
+        pixPend.length ? `${pixPend.length} aguardando` : 'nenhum';
+
+      document.getElementById('pag-pix-body').innerHTML = pixPend.length
+        ? pixPend.map(p => {
+            const exp    = p.pixExpiraEm ? new Date(p.pixExpiraEm.replace(' ', 'T') + 'Z') : null;
+            const restMs = exp ? exp - Date.now() : 0;
+            const expirou = restMs <= 0;
+            const min    = Math.max(0, Math.floor(restMs / 60000));
+            const seg    = Math.max(0, Math.floor((restMs % 60000) / 1000));
+            const corExp = expirou ? 'var(--c-rej)' : restMs < 120_000 ? 'var(--c-ip)' : 'var(--muted)';
+            return `<tr>
+              <td class="num">#${esc(p.numero)}</td>
+              <td>${esc(p.cliente)}</td>
+              <td>${esc(p.telefone)}</td>
+              <td class="money">${fmtR(p.total)}</td>
+              <td style="color:${corExp};font-weight:700">
+                ${expirou ? '⏱ Expirado' : `${min}:${String(seg).padStart(2, '0')}`}
+              </td>
+              <td>
+                <button class="pag-btn-confirm"
+                  onclick="confirmarPixManual('${esc(p.numero)}', this)">
+                  ✓ Confirmar
+                </button>
+              </td>
+            </tr>`;
+          }).join('')
+        : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--light)">
+            Nenhum PIX aguardando pagamento
+           </td></tr>`;
+
+      // ── Estornos pendentes ───────────────────────────────────────────────────
+      document.getElementById('pag-ref-badge').textContent =
+        estornos.length ? `${estornos.length} pendente(s)` : 'nenhum';
+
+      document.getElementById('pag-ref-body').innerHTML = estornos.length
+        ? estornos.map(p => `<tr>
+            <td class="num">#${esc(p.numero)}</td>
+            <td>${esc(p.cliente)}</td>
+            <td>${esc(p.telefone)}</td>
+            <td class="money cancel">${fmtR(p.total)}</td>
+            <td>${fmtDt(p.atualizadoEm)}</td>
+            <td>
+              <button class="pag-btn-estorno"
+                onclick="realizarEstornoPag('${esc(p.numero)}', this)">
+                ↩ Realizar Estorno
+              </button>
+            </td>
+          </tr>`).join('')
+        : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--light)">
+            Nenhum estorno pendente
+           </td></tr>`;
+    }
+
+    // Confirmação PIX manual — apenas quando webhook não disparou (caso raro)
+    async function confirmarPixManual(numero, btn) {
+      const ok = confirm(
+        `Confirmar pagamento PIX do pedido #${numero} manualmente?\n\n` +
+        `Use somente se o dinheiro já foi recebido e o sistema não confirmou automaticamente.`
+      );
+      if (!ok) return;
+      btn.disabled = true;
+      const r = await fetch(`${API}/pedidos/${numero}/confirmar-pagamento`, {
+        method: 'POST', headers: { 'x-api-key': apiKey },
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ erro: 'Erro desconhecido' }));
+        alert(`Erro: ${err.erro}`);
+      }
+      btn.disabled = false;
+    }
+
+    // Estorno PIX — exclusivo para admin, com confirmação dupla
+    async function realizarEstornoPag(numero, btn) {
+      const ok = confirm(
+        `⚠️ Realizar estorno PIX do pedido #${numero}?\n\n` +
+        `O valor será devolvido ao cliente via Mercado Pago.\n` +
+        `Esta ação não pode ser desfeita.`
+      );
+      if (!ok) return;
+      btn.disabled = true;
+      const r = await fetch(`${API}/pedidos/${numero}/realizar-estorno`, {
+        method: 'POST', headers: { 'x-api-key': apiKey },
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ erro: 'Erro desconhecido' }));
+        alert(`Erro ao realizar estorno: ${err.erro}`);
+        btn.disabled = false;
+        return;
+      }
+      renderPagamentos();
+    }
+
+    // Histórico filtrado por data
+    async function carregarHistoricoPag() {
+      const de  = document.getElementById('pag-hist-de').value;
+      const ate = document.getElementById('pag-hist-ate').value;
+      if (!de || !ate) { alert('Selecione o período completo'); return; }
+      if (de > ate)    { alert('"De" deve ser anterior ou igual a "Até"'); return; }
+
+      const fmtR = v => `R$ ${parseFloat(v || 0).toFixed(2).replace('.', ',')}`;
+      const fmtDt = d => {
+        if (!d) return '—';
+        const dt = new Date(d.replace(' ', 'T') + 'Z');
+        return isNaN(dt) ? d : dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      };
+
+      const METODO = { PIX: '🟦 PIX', CASH: '💵 Dinheiro/Cartão' };
+      const PAG_ST = { CONFIRMED: '✅ Confirmado', PENDING: '⏳ Pendente', FAILED: '❌ Falhou', NOT_APPLICABLE: '—' };
+      const PED_ST = {
+        PENDING_PAYMENT: 'Ag. Pagamento', PENDING_ACCEPTANCE: 'Ag. Aceite',
+        IN_PRODUCTION: 'Em produção', OUT_FOR_DELIVERY: 'Saiu p/ Entrega',
+        DONE: 'Concluído', REJECTED: 'Cancelado',
+      };
+
+      const tbody = document.getElementById('pag-hist-body');
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--light)">Carregando…</td></tr>`;
+
+      try {
+        const r = await fetch(`${API}/pedidos?de=${de}&ate=${ate}&limite=1000`, {
+          headers: { 'x-api-key': apiKey },
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const lista = await r.json();
+
+        if (!lista.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--light)">Nenhum pedido no período</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = lista.map(p => {
+          const cancelado = p.status === 'REJECTED';
+          return `<tr>
+            <td class="num">#${esc(p.numero)}</td>
+            <td>${esc(p.cliente)}</td>
+            <td>${METODO[p.paymentMethod] ?? p.paymentMethod}</td>
+            <td>${PAG_ST[p.paymentStatus] ?? p.paymentStatus}</td>
+            <td class="${cancelado ? 'cancel' : 'money'}">${fmtR(p.total)}</td>
+            <td style="color:${cancelado ? 'var(--c-rej)' : 'inherit'}">${PED_ST[p.status] ?? p.status}</td>
+            <td>${fmtDt(p.criadoEm)}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--c-rej)">Erro ao carregar: ${esc(e.message)}</td></tr>`;
+      }
+    }
 
     function esc(s) {
       return String(s ?? '')
