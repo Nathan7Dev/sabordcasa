@@ -1,18 +1,31 @@
 import MercadoPagoConfig, { Payment, PaymentRefund } from 'mercadopago';
 
-if (!process.env.MP_ACCESS_TOKEN) {
-  console.warn('[mp] MP_ACCESS_TOKEN não configurado — pagamentos PIX online desativados');
+export const mpAtivo = () => Boolean(process.env.MP_ACCESS_TOKEN);
+
+// Inicialização lazy — o cliente só é criado na primeira chamada real,
+// evitando crash de startup quando MP_ACCESS_TOKEN ainda não está configurado.
+let _payment = null;
+let _refund  = null;
+
+function getPayment() {
+  if (!_payment) {
+    const c = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+    _payment = new Payment(c);
+  }
+  return _payment;
 }
 
-const client    = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN ?? '' });
-const paymentApi = new Payment(client);
-const refundApi  = new PaymentRefund(client);
-
-export const mpAtivo = () => Boolean(process.env.MP_ACCESS_TOKEN);
+function getRefund() {
+  if (!_refund) {
+    const c = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+    _refund = new PaymentRefund(c);
+  }
+  return _refund;
+}
 
 export async function criarPix({ valor, descricao, nomeCliente, telefone, idempotencyKey }) {
   const digits = String(telefone).replace(/\D/g, '');
-  const result = await paymentApi.create({
+  const result = await getPayment().create({
     body: {
       transaction_amount:  parseFloat(valor.toFixed(2)),
       description:         descricao.slice(0, 255),
@@ -34,9 +47,9 @@ export async function criarPix({ valor, descricao, nomeCliente, telefone, idempo
 }
 
 export async function buscarPagamento(mpPaymentId) {
-  return paymentApi.get({ id: String(mpPaymentId) });
+  return getPayment().get({ id: String(mpPaymentId) });
 }
 
 export async function estornar(mpPaymentId) {
-  return refundApi.create({ payment_id: String(mpPaymentId), body: {} });
+  return getRefund().create({ payment_id: String(mpPaymentId), body: {} });
 }
