@@ -22,6 +22,7 @@ import cardapioRouter      from './routes/cardapio.js';
 import bairrosRouter       from './routes/bairros.js';
 import configuracoesRouter from './routes/configuracoes.js';
 import clientesRouter      from './routes/clientes.js';
+import webhooksRouter      from './routes/webhooks.js';
 
 // ─── Verificação de segurança na inicialização ────────────────────────────────
 const ADMIN_KEY = process.env.ADMIN_API_KEY ?? '';
@@ -133,6 +134,9 @@ app.use((req, _res, next) => { req.io = io; next(); });
 app.get('/api', (_req, res) => {
   res.json({ servico: "Sabor D'Casa API", status: 'online' });
 });
+
+// Webhook do Mercado Pago — fora dos rate limiters de admin
+app.use('/api/webhooks', webhooksRouter);
 
 // Rotas públicas com rate limit restritivo
 app.use('/api/pedidos',           limitePedido);           // POST / criação

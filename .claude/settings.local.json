@@ -13,7 +13,8 @@
       "Bash(taskkill /F /PID 62088)",
       "Bash(curl -s \"http://localhost:3000/api/configuracoes/loja-aberta\")",
       "Bash(curl -s \"http://localhost:3000/api/cardapio/tipos-marmita\")",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "WebFetch(domain:sabordcasa-production.up.railway.app)"
     ]
   }
 }

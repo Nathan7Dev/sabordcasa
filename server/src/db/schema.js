@@ -155,6 +155,7 @@ function runMigrations() {
   if (!p.includes('bairro_id'))           migrateAddBairro();
   if (!p.includes('bebidas_json'))        migrateAddBebidasJson();
   if (!p.includes('adicionais_json'))     migrateAddAdicionaisJson();
+  if (!p.includes('mp_payment_id'))       migrateAddMpPaymentId();
 }
 
 // ─── Migrações retroativas ────────────────────────────────────────────────────
@@ -233,6 +234,11 @@ function migrateAddSelecao() {
 function migrateAddTipoCategoria() {
   db.exec(`ALTER TABLE categorias ADD COLUMN tipo TEXT NOT NULL DEFAULT 'marmita'`);
   console.log('[db] migração: tipo adicionado a categorias');
+}
+function migrateAddMpPaymentId() {
+  db.exec(`ALTER TABLE pedidos ADD COLUMN mp_payment_id TEXT`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_pedidos_mp_payment ON pedidos(mp_payment_id)`);
+  console.log('[db] migração: mp_payment_id adicionado a pedidos');
 }
 
 export default db;

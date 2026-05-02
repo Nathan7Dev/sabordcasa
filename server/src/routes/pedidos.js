@@ -7,13 +7,14 @@ import {
   toPaymentMethod, getInitialPaymentStatus, getInitialStatus,
   canTransition, toFormaPagamento, toMomentoPagamento,
 } from '../lib/orderStateMachine.js';
+import { criarPix, estornar, mpAtivo } from '../lib/mp.js';
 
 const router = Router();
 
 // ═══════════════════════════════════════════════════════════
 //  PÚBLICO — criação de pedido pelo site
 // ═══════════════════════════════════════════════════════════
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const {
     cliente, telefone,
     tipoEntrega, endereco, pagamento, observacao,
@@ -115,14 +116,34 @@ router.post('/', (req, res) => {
   });
 
   const numero = tx();
-  const pedido = buscarPedido(numero);
 
   console.log(`[pedido] #${numero} | total: R$${totalFinal.toFixed(2)} | ${tipoEntrega}`);
+
+  // Criar pagamento PIX no Mercado Pago
+  let pixData = null;
+  if (paymentMethod === PAYMENT_METHOD.PIX && mpAtivo()) {
+    try {
+      pixData = await criarPix({
+        valor:          totalFinal,
+        descricao:      `Pedido #${numero} — Sabor D'Casa`,
+        nomeCliente:    cliente.trim(),
+        telefone,
+        idempotencyKey: numero,
+      });
+      db.prepare('UPDATE pedidos SET mp_payment_id = ? WHERE numero = ?')
+        .run(pixData.mpPaymentId, numero);
+      console.log(`[mp] PIX criado para #${numero} — mp_id: ${pixData.mpPaymentId}`);
+    } catch (err) {
+      console.error(`[mp] erro ao criar PIX para #${numero}:`, err.message);
+    }
+  }
+
+  const pedido = buscarPedido(numero);
 
   if (pedido.status === STATUS.PENDING_ACCEPTANCE)
     req.io?.to('admin').emit('novo_pedido', pedido);
 
-  res.status(201).json(pedido);
+  res.status(201).json({ ...pedido, ...(pixData ? { pix: pixData } : {}) });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -386,15 +407,28 @@ function transicionar(req, res, nextStatus) {
   if (!ok) return res.status(422).json({ erro: motivo });
 
   if (nextStatus === STATUS.REJECTED) {
-    const needsRefund = (
-      pedido.paymentMethod === PAYMENT_METHOD.PIX &&
-      pedido.paymentStatus === PAYMENT_STATUS.CONFIRMED
-    ) ? 1 : 0;
+    const pixPago = pedido.paymentMethod === PAYMENT_METHOD.PIX && pedido.paymentStatus === PAYMENT_STATUS.CONFIRMED;
+    const needsRefund = pixPago ? 1 : 0;
+
     db.prepare(`
       UPDATE pedidos
       SET status = 'REJECTED', motivo_cancelamento = 'manual', needs_refund = ?, atualizado_em = datetime('now')
       WHERE numero = ?
     `).run(needsRefund, req.params.numero);
+
+    // Estorno automático via Mercado Pago
+    if (pixPago && pedido.mpPaymentId && mpAtivo()) {
+      estornar(pedido.mpPaymentId)
+        .then(() => {
+          db.prepare(`UPDATE pedidos SET needs_refund = 0, atualizado_em = datetime('now') WHERE numero = ?`)
+            .run(req.params.numero);
+          req.io?.to('admin').emit('status_atualizado', buscarPedido(req.params.numero));
+          console.log(`[mp] estorno realizado para #${req.params.numero}`);
+        })
+        .catch(err => {
+          console.error(`[mp] falha no estorno de #${req.params.numero}:`, err.message);
+        });
+    }
   } else {
     db.prepare(`UPDATE pedidos SET status = ?, atualizado_em = datetime('now') WHERE numero = ?`).run(nextStatus, req.params.numero);
   }
@@ -428,6 +462,7 @@ function mapRow(r) {
     paymentStatus:      r.payment_status,
     formaPagamento:     r.forma_pagamento,
     momentoPagamento:   r.momento_pagamento,
+    mpPaymentId:            r.mp_payment_id ?? null,
     pixExpiraEm:            r.pix_expira_em,
     motivoCancelamento:     r.motivo_cancelamento ?? null,
     needsRefund:            r.needs_refund === 1,

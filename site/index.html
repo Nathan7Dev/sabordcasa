@@ -1633,13 +1633,36 @@
   <div class="m-overlay" id="modal-confirm" style="align-items:center;justify-content:center"
     onclick="closeConfirmFora(event)">
     <div class="m-sheet"
-      style="border-radius:16px;max-width:440px;margin:20px;width:calc(100% - 40px);max-height:unset">
+      style="border-radius:16px;max-width:440px;margin:20px;width:calc(100% - 40px);max-height:90vh;overflow-y:auto">
       <div class="cf-wrap">
         <div class="cf-icon" id="cf-icon">✅</div>
         <div class="cf-title" id="cf-title"></div>
         <div class="cf-msg" id="cf-msg"></div>
         <div class="cf-num" id="cf-num" style="display:none"></div>
-        <button class="btn-main btn-main-center" style="margin-top:8px" onclick="closeConfirm()">Fechar</button>
+
+        <!-- Bloco PIX — visível só em pedidos PIX -->
+        <div id="cf-pix" style="display:none;margin-top:16px;text-align:center">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">
+            Pague com PIX para confirmar seu pedido
+          </div>
+          <img id="cf-qr" src="" alt="QR Code PIX"
+            style="width:200px;height:200px;border:2px solid var(--border);border-radius:8px;display:block;margin:0 auto 12px">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:6px">ou copie o código abaixo:</div>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <input id="cf-copiacola" readonly
+              style="flex:1;font-size:11px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#f9f9f9;color:var(--text);font-family:monospace;word-break:break-all">
+            <button onclick="copiarPix()"
+              style="padding:8px 12px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">
+              Copiar
+            </button>
+          </div>
+          <div id="cf-timer" style="margin-top:10px;font-size:12px;color:var(--amber);font-weight:600"></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--sub)">
+            O pedido é confirmado automaticamente após o pagamento
+          </div>
+        </div>
+
+        <button class="btn-main btn-main-center" style="margin-top:16px" onclick="closeConfirm()">Fechar</button>
       </div>
     </div>
   </div>
@@ -2601,7 +2624,11 @@
         closeCart();
         updateCartBar();
         renderMenu();
-        showConfirm('✅', 'Pedido recebido!', 'A cozinha já foi avisada. Obrigado por escolher o Sabor D\'Casa!', pedido.numero);
+        if (pedido.pix?.qrCode) {
+          showConfirmPix(pedido.numero, pedido.pix);
+        } else {
+          showConfirm('✅', 'Pedido recebido!', 'A cozinha já foi avisada. Obrigado por escolher o Sabor D\'Casa!', pedido.numero);
+        }
       } catch (e) {
         showConfirm('⚠️', 'Algo deu errado', e.message);
       } finally {
@@ -2614,6 +2641,8 @@
     // ═══════════════════════════════════════════════════════
     //  MODAL CONFIRMAÇÃO
     // ═══════════════════════════════════════════════════════
+    let _pixTimerInterval = null;
+
     function showConfirm(icon, title, msg, numero) {
       document.getElementById('cf-icon').textContent = icon;
       document.getElementById('cf-title').textContent = title;
@@ -2621,9 +2650,50 @@
       const numEl = document.getElementById('cf-num');
       if (numero) { numEl.textContent = `#${numero}`; numEl.style.display = ''; }
       else numEl.style.display = 'none';
+      document.getElementById('cf-pix').style.display = 'none';
       document.getElementById('modal-confirm').classList.add('on');
     }
-    function closeConfirm() { document.getElementById('modal-confirm').classList.remove('on'); }
+
+    function showConfirmPix(numero, pix) {
+      document.getElementById('cf-icon').textContent = '🟢';
+      document.getElementById('cf-title').textContent = 'Pedido criado!';
+      document.getElementById('cf-msg').textContent = 'Realize o pagamento PIX abaixo para confirmar seu pedido.';
+      const numEl = document.getElementById('cf-num');
+      numEl.textContent = `#${numero}`; numEl.style.display = '';
+
+      document.getElementById('cf-qr').src = `data:image/png;base64,${pix.qrCodeBase64}`;
+      document.getElementById('cf-copiacola').value = pix.qrCode;
+      document.getElementById('cf-pix').style.display = '';
+
+      // Countdown de 10 minutos
+      const expira = Date.now() + 10 * 60 * 1000;
+      clearInterval(_pixTimerInterval);
+      _pixTimerInterval = setInterval(() => {
+        const resto = Math.max(0, expira - Date.now());
+        const min = Math.floor(resto / 60000);
+        const seg = Math.floor((resto % 60000) / 1000);
+        const timerEl = document.getElementById('cf-timer');
+        if (resto === 0) {
+          clearInterval(_pixTimerInterval);
+          timerEl.textContent = '⏱ PIX expirado';
+          timerEl.style.color = 'var(--red)';
+        } else {
+          timerEl.textContent = `⏱ Expira em ${min}:${String(seg).padStart(2, '0')}`;
+        }
+      }, 1000);
+
+      document.getElementById('modal-confirm').classList.add('on');
+    }
+
+    function copiarPix() {
+      const val = document.getElementById('cf-copiacola').value;
+      navigator.clipboard?.writeText(val).catch(() => {});
+    }
+
+    function closeConfirm() {
+      clearInterval(_pixTimerInterval);
+      document.getElementById('modal-confirm').classList.remove('on');
+    }
     function closeConfirmFora(e) {
       const el = document.getElementById('modal-confirm');
       if (e.target === el && _dragOrigin === el) closeConfirm();
