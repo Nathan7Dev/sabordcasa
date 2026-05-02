@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:pedido.anota.ai)",
+      "Bash(node -e \"const db=require\\('better-sqlite3'\\)\\('./data/sabordcasa.db'\\); console.log\\('DB OK, tabelas:', db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).all\\(\\).map\\(r=>r.name\\).join\\(', '\\)\\);\")",
+      "Bash(node *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "Bash(npm install *)",
+      "Bash(echo \"SERVER_PID=$!\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(kill %1)",
+      "Bash(taskkill /F /PID 62088)",
+      "Bash(curl -s \"http://localhost:3000/api/configuracoes/loja-aberta\")",
+      "Bash(curl -s \"http://localhost:3000/api/cardapio/tipos-marmita\")",
+      "Bash(npm uninstall *)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
