@@ -2651,7 +2651,7 @@
 
   <!-- ── Modal ──────────────────────────────────────────────────────────────── -->
   <div id="modal" style="display:none">
-    <div class="modal-overlay" onclick="fecharModal()">
+    <div class="modal-overlay" onclick="fecharModalFora(event)">
       <div class="modal-box" onclick="event.stopPropagation()">
         <div class="modal-head">
           <span class="modal-title" id="modal-titulo">Título</span>
@@ -3598,9 +3598,16 @@
       document.getElementById('modal').style.display = '';
     }
 
+    let _dragOrigin = null;
+    document.addEventListener('mousedown', e => { _dragOrigin = e.target; });
+
     function fecharModal() {
       document.getElementById('modal').style.display = 'none';
       _modalSalvar = null;
+    }
+
+    function fecharModalFora(e) {
+      if (_dragOrigin === e.target) fecharModal();
     }
 
     function salvarModal() {
