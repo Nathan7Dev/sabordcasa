@@ -142,7 +142,7 @@ app.get('/api', (_req, res) => {
 app.use('/api/webhooks', webhooksRouter);
 
 // Rotas públicas com rate limit restritivo
-app.use('/api/pedidos',           limitePedido);           // POST / criação
+app.post('/api/pedidos',           limitePedido);          // só criação de pedido pelo cliente
 app.use('/api/clientes/registrar', limitePublico);
 app.use('/api/cardapio/ativo',    limitePublico);
 app.use('/api/configuracoes/loja-aberta', limitePublico);
