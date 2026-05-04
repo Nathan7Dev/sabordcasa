@@ -10,14 +10,10 @@ router.get('/status', requireApiKey, (_req, res) => {
   res.json(getStatus());
 });
 
-// Reinicializar cliente (exibe novo QR se sessão expirou)
-router.post('/reconectar', requireApiKey, async (_req, res) => {
-  try {
-    await reconectar();
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
+// Reinicializar cliente — responde imediatamente; resultado chega via socket (qr/ready/disconnected)
+router.post('/reconectar', requireApiKey, (_req, res) => {
+  reconectar().catch(() => { /* já tratado dentro do reconectar() */ });
+  res.json({ ok: true });
 });
 
 // Desconectar e encerrar sessão

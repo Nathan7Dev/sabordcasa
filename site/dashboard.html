@@ -4888,10 +4888,11 @@ ${sep}
       const btn = document.getElementById('wpp-btn-reconectar');
       btn.disabled = true;
       btn.textContent = 'Reconectando…';
+      // Define estado imediatamente; resultado real chega via socket (qr/ready/disconnected)
+      wppSetEstado('connecting');
       try {
         await fetch(`${API}/whatsapp/reconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
-        wppSetEstado('connecting');
-      } catch { /* aguarda evento via socket */ } finally {
+      } catch { wppSetEstado('disconnected'); } finally {
         btn.disabled = false;
         btn.textContent = 'Reconectar';
       }

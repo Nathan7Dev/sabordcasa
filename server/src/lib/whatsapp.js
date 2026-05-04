@@ -16,12 +16,23 @@ function normalizarTelefone(tel) {
 }
 
 function criarCliente() {
+  const puppeteerOpts = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
+  };
+  // Em produção/Docker usa o Chromium do sistema via PUPPETEER_EXECUTABLE_PATH
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    puppeteerOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
   const c = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
-    puppeteer: {
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    },
+    puppeteer: puppeteerOpts,
   });
 
   c.on('qr', async (qr) => {
@@ -54,7 +65,6 @@ function criarCliente() {
     console.log('[whatsapp] Desconectado:', reason);
   });
 
-  // Recebe mensagens de clientes (apenas chats individuais, não grupos)
   c.on('message', (msg) => {
     if (msg.from.endsWith('@g.us')) return;
     _io?.to('admin').emit('whatsapp_message', {
@@ -67,16 +77,22 @@ function criarCliente() {
   return c;
 }
 
-export function initWhatsApp(io) {
-  _io    = io;
-  _status = 'connecting';
-  client  = criarCliente();
+function _iniciarCliente() {
   client.initialize().catch(err => {
     _status = 'disconnected';
-    console.error('[whatsapp] Erro na inicialização:', err.message);
+    _io?.to('admin').emit('whatsapp_disconnected', { reason: err.message });
+    console.error('[whatsapp] Erro ao inicializar:', err.message);
   });
 }
 
+export function initWhatsApp(io) {
+  _io     = io;
+  _status = 'connecting';
+  client  = criarCliente();
+  _iniciarCliente();
+}
+
+// Destrói o cliente atual e reinicializa — resultado chega via socket (qr/ready/disconnected)
 export async function reconectar() {
   if (client) {
     try { await client.destroy(); } catch { /* ignorar */ }
@@ -85,7 +101,7 @@ export async function reconectar() {
   _status    = 'connecting';
   _qrDataUrl = null;
   client = criarCliente();
-  await client.initialize();
+  _iniciarCliente(); // fire-and-forget — não bloqueia a rota HTTP
 }
 
 export async function desconectar() {
