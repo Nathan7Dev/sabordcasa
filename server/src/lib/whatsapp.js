@@ -66,7 +66,8 @@ function criarCliente() {
   });
 
   c.on('message', (msg) => {
-    if (msg.from.endsWith('@g.us')) return;
+    if (msg.from.endsWith('@g.us')) return;       // grupos
+    if (msg.from === 'status@broadcast') return;  // stories/status do WhatsApp
     _io?.to('admin').emit('whatsapp_message', {
       from:      msg.from.replace('@c.us', ''),
       body:      msg.body,
