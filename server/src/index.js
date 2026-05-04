@@ -210,7 +210,7 @@ http.listen(PORT, () => {
   const env = process.env.NODE_ENV ?? 'development';
   console.log(`\n🍱  Sabor D'Casa — API [${env}] — porta ${PORT}\n`);
   iniciarAgendamentoLimpeza();
-  initWhatsApp(io);
+  initWhatsApp(io).catch(err => console.error('[whatsapp] init:', err.message));
 });
 
 http.on('error', (err) => {

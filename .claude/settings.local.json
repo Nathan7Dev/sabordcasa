@@ -18,7 +18,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Nathanzera\\\\Desktop\\\\FASE 1 CONCLUIDA\" -Recurse -Directory)",
       "Bash(Select-Object -First 50)",
       "Bash(Format-Table FullName)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: rate limit de pedido só no POST raiz, não em rotas admin *)"
     ]
   }
 }

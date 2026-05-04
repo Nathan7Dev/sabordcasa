@@ -2,6 +2,7 @@ import { createHmac } from 'crypto';
 import { Router } from 'express';
 import db from '../db/schema.js';
 import { buscarPagamento } from '../lib/mp.js';
+import { handleEvolutionWebhook } from '../lib/whatsapp.js';
 
 if (!process.env.MP_WEBHOOK_SECRET) {
   console.warn('[webhook] MP_WEBHOOK_SECRET não configurado — verificação de assinatura desativada');
@@ -114,6 +115,13 @@ router.post('/mercadopago', async (req, res) => {
   } catch (err) {
     console.error('[webhook] erro ao processar notificação MP:', err.message);
   }
+});
+
+// Evolution API envia POST aqui para cada evento (QR, conexão, mensagens)
+router.post('/evolution', (req, res) => {
+  res.status(200).json({ ok: true }); // responde imediatamente
+  const { event, data } = req.body ?? {};
+  if (event) handleEvolutionWebhook(event, data);
 });
 
 export default router;
