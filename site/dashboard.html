@@ -3156,9 +3156,12 @@
       socket.on('status_atualizado', p => setState(p));
       socket.on('loja_status', ({ aberta }) => atualizarBtnLoja(aberta));
 
-      socket.on('whatsapp_qr', ({ qr }) => wppSetEstado('qr', qr));
-      socket.on('whatsapp_ready', () => wppSetEstado('connected'));
-      socket.on('whatsapp_disconnected', () => wppSetEstado('disconnected'));
+      socket.on('whatsapp_qr', ({ qr }) => { clearTimeout(_wppConectandoTimer); wppSetEstado('qr', qr); });
+      socket.on('whatsapp_ready', () => { clearTimeout(_wppConectandoTimer); wppSetEstado('connected'); });
+      socket.on('whatsapp_disconnected', ({ reason } = {}) => {
+        wppSetEstado('disconnected');
+        if (reason) document.getElementById('wpp-offline-sub').textContent = '⚠️ ' + reason;
+      });
       socket.on('whatsapp_message', ({ from, body, timestamp }) =>
         wppAddMsg(from, { body, ts: timestamp, mine: false }));
       socket.on('whatsapp_sent', ({ to, body, timestamp }) =>
@@ -3479,7 +3482,7 @@
       document.getElementById('view-whatsapp').style.display = tab === 'whatsapp' ? '' : 'none';
       document.getElementById('view-configuracoes').style.display = tab === 'configuracoes' ? '' : 'none';
 
-      if (tab === 'cardapio' && apiKey && !_cardapioCarregado) carregarCardapio();
+      if (tab === 'cardapio' && apiKey) carregarCardapio();
       if (tab === 'configuracoes' && apiKey) { carregarTiposMarmita(); carregarBairros(); }
       if (tab === 'relatorios' && apiKey) {
         if (!document.getElementById('rel-de').value) setPeriodo('mes');
@@ -4990,11 +4993,29 @@ ${sep}
       }
     }
 
+    let _wppConectandoTimer = null;
     async function wppReconectar() {
       wppSetEstado('connecting');
+      clearTimeout(_wppConectandoTimer);
+      // Se em 30s não vier evento do socket, volta para desconectado com aviso
+      _wppConectandoTimer = setTimeout(() => {
+        wppSetEstado('disconnected');
+        document.getElementById('wpp-offline-sub').textContent =
+          '⚠️ Tempo esgotado. Verifique os logs do servidor e as variáveis EVOLUTION_API_URL / EVOLUTION_API_KEY.';
+      }, 30000);
       try {
-        await fetch(`${API}/whatsapp/reconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
-      } catch { wppSetEstado('disconnected'); }
+        const r = await fetch(`${API}/whatsapp/reconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
+        if (!r.ok) {
+          clearTimeout(_wppConectandoTimer);
+          const d = await r.json().catch(() => ({}));
+          wppSetEstado('disconnected');
+          document.getElementById('wpp-offline-sub').textContent = '⚠️ ' + (d.erro || 'Erro ao conectar');
+        }
+      } catch {
+        clearTimeout(_wppConectandoTimer);
+        wppSetEstado('disconnected');
+        document.getElementById('wpp-offline-sub').textContent = '⚠️ Servidor inacessível.';
+      }
     }
 
     async function wppDesconectar() {

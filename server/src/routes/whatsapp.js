@@ -9,7 +9,10 @@ router.get('/status', requireApiKey, (_req, res) => {
   res.json(getStatus());
 });
 
-router.post('/reconectar', requireApiKey, (_req, res) => {
+router.post('/reconectar', requireApiKey, (req, res) => {
+  const { status } = getStatus();
+  if (status === 'disabled')
+    return res.status(503).json({ erro: 'Evolution API não configurada — defina EVOLUTION_API_URL e EVOLUTION_API_KEY nas variáveis do Railway' });
   res.json({ ok: true }); // responde imediatamente; resultado chega via socket
   reconectar().catch(err => console.error('[whatsapp] reconectar:', err.message));
 });
