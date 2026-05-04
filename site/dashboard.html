@@ -1664,6 +1664,81 @@
     }
     .pag-btn-confirm:disabled, .pag-btn-estorno:disabled { opacity: .5; cursor: not-allowed }
 
+    /* ── WhatsApp ── */
+    .wpp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: var(--gap);
+      flex-wrap: wrap;
+    }
+    .wpp-status-bar { display: flex; align-items: center; gap: 8px }
+    .wpp-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--border2); flex-shrink: 0;
+      transition: background .3s
+    }
+    .wpp-dot--on   { background: var(--c-done) }
+    .wpp-dot--warn { background: #f59e0b }
+    .wpp-status-txt { font-size: 13px; color: var(--muted); font-weight: 600 }
+    .wpp-actions { display: flex; gap: 8px }
+
+    .wpp-qr-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      max-width: 380px; margin-bottom: var(--gap);
+    }
+    .wpp-qr-hint { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; margin: 0 }
+    .wpp-qr-img  { width: 220px; height: 220px; border-radius: 8px; border: 1px solid var(--border2) }
+
+    .wpp-msgs {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .wpp-msgs-vazia { font-size: 13px; color: var(--light); padding: 8px 0 }
+    .wpp-msg {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .wpp-msg--out { background: #1e3a5f22; border-color: #3b82f640 }
+    .wpp-msg-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px }
+    .wpp-msg-de   { font-size: 11px; font-weight: 700; color: #3b82f6 }
+    .wpp-msg-enviada { font-size: 11px; font-weight: 700; color: var(--c-done) }
+    .wpp-msg-hora { font-size: 11px; color: var(--light) }
+    .wpp-msg-body { font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word }
+    .wpp-reply-btn {
+      margin-top: 6px; font-size: 11px; padding: 3px 9px;
+      background: transparent; border: 1px solid var(--border2);
+      border-radius: 6px; cursor: pointer; color: var(--muted);
+      font-family: inherit; transition: all .12s
+    }
+    .wpp-reply-btn:hover { border-color: #3b82f6; color: #3b82f6 }
+
+    .wpp-send-form { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px }
+    .wpp-send-row  { display: flex; flex-direction: column; gap: 5px }
+    .wpp-label     { font-size: 12px; font-weight: 600; color: var(--muted) }
+    .wpp-input, .wpp-textarea {
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color .12s;
+      resize: vertical;
+    }
+    .wpp-input:focus, .wpp-textarea:focus { border-color: #3b82f6 }
+
     .rel-header {
       display: flex;
       align-items: center;
@@ -2403,6 +2478,7 @@
     <button class="tab-btn" id="tab-relatorios" onclick="switchTab('relatorios')">Relatórios</button>
     <button class="tab-btn" id="tab-clientes" onclick="switchTab('clientes')">Clientes</button>
     <button class="tab-btn" id="tab-pagamentos" onclick="switchTab('pagamentos')">Pagamentos</button>
+    <button class="tab-btn" id="tab-whatsapp" onclick="switchTab('whatsapp')">WhatsApp</button>
     <button class="tab-btn" id="tab-configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
   </nav>
 
@@ -2785,6 +2861,65 @@
 
   </section>
 
+  <!-- ── WhatsApp ──────────────────────────────────────────────────────────── -->
+  <section id="view-whatsapp" style="display:none">
+
+    <!-- Status de conexão -->
+    <div class="wpp-header">
+      <div class="wpp-status-bar">
+        <span class="wpp-dot" id="wpp-dot"></span>
+        <span class="wpp-status-txt" id="wpp-status-txt">verificando…</span>
+      </div>
+      <div class="wpp-actions">
+        <button class="btn-secondary" id="wpp-btn-reconectar" onclick="wppReconectar()" style="display:none">Reconectar</button>
+        <button class="btn-secondary" id="wpp-btn-desconectar" onclick="wppDesconectar()" style="display:none">Desconectar</button>
+      </div>
+    </div>
+
+    <!-- QR code -->
+    <div id="wpp-qr-area" style="display:none">
+      <div class="wpp-qr-card">
+        <p class="wpp-qr-hint">Abra o WhatsApp no celular → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong> e aponte para o QR:</p>
+        <img id="wpp-qr-img" src="" alt="QR Code WhatsApp" class="wpp-qr-img">
+      </div>
+    </div>
+
+    <!-- Painel conectado -->
+    <div id="wpp-connected-area" style="display:none">
+
+      <!-- Mensagens recebidas -->
+      <div class="rel-table-wrap" style="margin-bottom:16px">
+        <div class="rel-table-head">
+          <span class="rel-table-title">Mensagens recebidas</span>
+          <button class="rel-apply" onclick="wppLimparMensagens()">Limpar</button>
+        </div>
+        <div id="wpp-msgs" class="wpp-msgs">
+          <div class="wpp-msgs-vazia">Nenhuma mensagem ainda. As mensagens chegam em tempo real.</div>
+        </div>
+      </div>
+
+      <!-- Enviar mensagem manual -->
+      <div class="rel-table-wrap">
+        <div class="rel-table-head">
+          <span class="rel-table-title">Enviar mensagem</span>
+        </div>
+        <div class="wpp-send-form">
+          <div class="wpp-send-row">
+            <label class="wpp-label">Telefone (com DDD)</label>
+            <input type="tel" id="wpp-send-tel" class="wpp-input" placeholder="11999999999">
+          </div>
+          <div class="wpp-send-row">
+            <label class="wpp-label">Mensagem</label>
+            <textarea id="wpp-send-msg" class="wpp-textarea" rows="3" placeholder="Digite a mensagem…"></textarea>
+          </div>
+          <button class="btn-primary" onclick="wppEnviar()">Enviar</button>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
   <!-- ── Modal ──────────────────────────────────────────────────────────────── -->
   <div id="modal" style="display:none">
     <div class="modal-overlay" onclick="fecharModalFora(event)">
@@ -2899,6 +3034,11 @@
       socket.on('novo_pedido', p => setState(p));
       socket.on('status_atualizado', p => setState(p));
       socket.on('loja_status', ({ aberta }) => atualizarBtnLoja(aberta));
+
+      socket.on('whatsapp_qr', ({ qr }) => wppSetEstado('qr', qr));
+      socket.on('whatsapp_ready', () => wppSetEstado('connected'));
+      socket.on('whatsapp_disconnected', () => wppSetEstado('disconnected'));
+      socket.on('whatsapp_message', msg => wppReceberMensagem(msg));
       socket.on('cardapio_atualizado', () => {
         if (document.getElementById('view-cardapio').style.display !== 'none') carregarCardapio();
       });
@@ -3203,7 +3343,7 @@
     // ══════════════════════════════════════════════════════════════════════════════
 
     function switchTab(tab) {
-      const TABS = ['operacoes', 'cardapio', 'relatorios', 'clientes', 'pagamentos', 'configuracoes'];
+      const TABS = ['operacoes', 'cardapio', 'relatorios', 'clientes', 'pagamentos', 'whatsapp', 'configuracoes'];
       TABS.forEach(t => document.getElementById(`tab-${t}`).classList.toggle('active', t === tab));
 
       document.querySelector('main.board').style.display = tab === 'operacoes' ? '' : 'none';
@@ -3212,6 +3352,7 @@
       document.getElementById('view-relatorios').style.display = tab === 'relatorios' ? '' : 'none';
       document.getElementById('view-clientes').style.display = tab === 'clientes' ? '' : 'none';
       document.getElementById('view-pagamentos').style.display = tab === 'pagamentos' ? '' : 'none';
+      document.getElementById('view-whatsapp').style.display = tab === 'whatsapp' ? '' : 'none';
       document.getElementById('view-configuracoes').style.display = tab === 'configuracoes' ? '' : 'none';
 
       if (tab === 'cardapio' && apiKey && !_cardapioCarregado) carregarCardapio();
@@ -3222,6 +3363,10 @@
       }
       if (tab === 'clientes' && apiKey) carregarClientes();
       if (tab === 'pagamentos' && apiKey) renderPagamentos();
+      if (tab === 'whatsapp' && apiKey) {
+        document.getElementById('tab-whatsapp').textContent = 'WhatsApp';
+        wppCarregarStatus();
+      }
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -4688,6 +4833,134 @@ ${sep}
       const tr = e.target.closest('#cli-tbody tr[data-tel]');
       if (tr) verPedidosCliente(tr.dataset.tel, tr.dataset.nome);
     });
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    //  WHATSAPP
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    const _wppMsgs = []; // histórico de mensagens em memória (apenas session atual)
+
+    async function wppCarregarStatus() {
+      try {
+        const r = await fetch(`${API}/whatsapp/status`, { headers: { 'x-api-key': apiKey } });
+        if (!r.ok) return;
+        const { status, qr } = await r.json();
+        wppSetEstado(status, qr);
+      } catch { /* silencioso */ }
+    }
+
+    function wppSetEstado(status, qr = null) {
+      const dot  = document.getElementById('wpp-dot');
+      const txt  = document.getElementById('wpp-status-txt');
+      const qrEl = document.getElementById('wpp-qr-area');
+      const con  = document.getElementById('wpp-connected-area');
+      const btnR = document.getElementById('wpp-btn-reconectar');
+      const btnD = document.getElementById('wpp-btn-desconectar');
+
+      dot.className = 'wpp-dot';
+      qrEl.style.display = 'none';
+      con.style.display  = 'none';
+      btnR.style.display = 'none';
+      btnD.style.display = 'none';
+
+      if (status === 'connected') {
+        dot.classList.add('wpp-dot--on');
+        txt.textContent = 'Conectado';
+        con.style.display = '';
+        btnD.style.display = '';
+      } else if (status === 'qr') {
+        dot.classList.add('wpp-dot--warn');
+        txt.textContent = 'Aguardando scan do QR code…';
+        if (qr) {
+          document.getElementById('wpp-qr-img').src = qr;
+          qrEl.style.display = '';
+        }
+      } else if (status === 'connecting') {
+        dot.classList.add('wpp-dot--warn');
+        txt.textContent = 'Conectando…';
+      } else {
+        txt.textContent = 'Desconectado';
+        btnR.style.display = '';
+      }
+    }
+
+    async function wppReconectar() {
+      const btn = document.getElementById('wpp-btn-reconectar');
+      btn.disabled = true;
+      btn.textContent = 'Reconectando…';
+      try {
+        await fetch(`${API}/whatsapp/reconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
+        wppSetEstado('connecting');
+      } catch { /* aguarda evento via socket */ } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reconectar';
+      }
+    }
+
+    async function wppDesconectar() {
+      if (!confirm('Deseja desconectar o WhatsApp? A sessão será encerrada.')) return;
+      try {
+        await fetch(`${API}/whatsapp/desconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
+        wppSetEstado('disconnected');
+      } catch (e) { alert('Erro ao desconectar: ' + e.message); }
+    }
+
+    async function wppEnviar() {
+      const tel = document.getElementById('wpp-send-tel').value.trim();
+      const msg = document.getElementById('wpp-send-msg').value.trim();
+      if (!tel || !msg) return alert('Preencha o telefone e a mensagem.');
+      try {
+        const r = await fetch(`${API}/whatsapp/enviar`, {
+          method: 'POST',
+          headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefone: tel, mensagem: msg }),
+        });
+        if (!r.ok) { const d = await r.json(); return alert('Erro: ' + d.erro); }
+        document.getElementById('wpp-send-msg').value = '';
+        // Adiciona mensagem enviada na lista
+        wppReceberMensagem({ from: tel, body: msg, timestamp: Date.now() / 1000, enviada: true });
+      } catch (e) { alert('Erro ao enviar: ' + e.message); }
+    }
+
+    function wppReceberMensagem({ from, body, timestamp, enviada = false }) {
+      _wppMsgs.push({ from, body, timestamp, enviada });
+      // Mostra a notificação na aba se não estiver visível
+      const tabBtn = document.getElementById('tab-whatsapp');
+      if (document.getElementById('view-whatsapp').style.display === 'none' && !enviada) {
+        tabBtn.textContent = 'WhatsApp 🔴';
+      }
+      wppRenderMensagens();
+    }
+
+    function wppRenderMensagens() {
+      const el = document.getElementById('wpp-msgs');
+      if (!el) return;
+      if (!_wppMsgs.length) {
+        el.innerHTML = '<div class="wpp-msgs-vazia">Nenhuma mensagem ainda. As mensagens chegam em tempo real.</div>';
+        return;
+      }
+      el.innerHTML = _wppMsgs.slice(-50).map(m => {
+        const hora = new Date(m.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const de   = m.enviada ? `<span class="wpp-msg-enviada">→ ${esc(m.from)}</span>` : `<span class="wpp-msg-de">${esc(m.from)}</span>`;
+        return `<div class="wpp-msg${m.enviada ? ' wpp-msg--out' : ''}">
+          <div class="wpp-msg-meta">${de} <span class="wpp-msg-hora">${hora}</span></div>
+          <div class="wpp-msg-body">${esc(m.body)}</div>
+          ${!m.enviada ? `<button class="wpp-reply-btn" onclick="wppResponder('${esc(m.from)}')">Responder</button>` : ''}
+        </div>`;
+      }).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function wppResponder(from) {
+      document.getElementById('wpp-send-tel').value = from.replace('@c.us', '');
+      document.getElementById('wpp-send-msg').focus();
+    }
+
+    function wppLimparMensagens() {
+      _wppMsgs.length = 0;
+      document.getElementById('tab-whatsapp').textContent = 'WhatsApp';
+      wppRenderMensagens();
+    }
 
     // ── Timeout de inatividade (30 min) — limpa sessão admin ─────────────────────
     (function setupInactivityTimeout() {

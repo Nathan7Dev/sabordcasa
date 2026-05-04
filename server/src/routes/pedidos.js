@@ -8,6 +8,7 @@ import {
   canTransition, toFormaPagamento, toMomentoPagamento,
 } from '../lib/orderStateMachine.js';
 import { criarPix, estornar, mpAtivo } from '../lib/mp.js';
+import { enviarMensagem } from '../lib/whatsapp.js';
 
 const router = Router();
 
@@ -205,16 +206,25 @@ router.post('/:numero/reativar', requireApiKey, (req, res) => {
 // Cancelar de qualquer estado ativo (inclui IN_PRODUCTION)
 router.post('/:numero/cancelar', requireApiKey, (req, res) => transicionar(req, res, STATUS.REJECTED));
 
-// Confirmar que o estorno PIX foi realizado manualmente
-router.post('/:numero/marcar-estorno', requireApiKey, (req, res) => {
+// Realizar estorno PIX via Mercado Pago — exclusivo para admin autenticado via dashboard
+router.post('/:numero/realizar-estorno', requireApiKey, async (req, res) => {
   const pedido = buscarPedido(req.params.numero);
   if (!pedido) return res.status(404).json({ erro: 'Pedido não encontrado' });
   if (!pedido.needsRefund) return res.status(422).json({ erro: 'Pedido não requer estorno' });
+  if (!pedido.mpPaymentId) return res.status(422).json({ erro: 'ID de pagamento MP não encontrado' });
 
-  db.prepare(`UPDATE pedidos SET needs_refund = 0, atualizado_em = datetime('now') WHERE numero = ?`).run(req.params.numero);
-  const atualizado = buscarPedido(req.params.numero);
-  req.io?.to('admin').emit('status_atualizado', atualizado);
-  return res.json(atualizado);
+  try {
+    await estornar(pedido.mpPaymentId);
+    db.prepare(`UPDATE pedidos SET needs_refund = 0, atualizado_em = datetime('now') WHERE numero = ?`)
+      .run(req.params.numero);
+    console.log(`[mp] estorno realizado pelo admin para #${req.params.numero}`);
+    const atualizado = buscarPedido(req.params.numero);
+    req.io?.to('admin').emit('status_atualizado', atualizado);
+    return res.json(atualizado);
+  } catch (err) {
+    console.error(`[mp] falha no estorno de #${req.params.numero}:`, err.message);
+    return res.status(502).json({ erro: 'Falha ao processar estorno no Mercado Pago. Tente novamente.' });
+  }
 });
 
 // Ajustar tipo de entrega/bairro em pedido não finalizado
@@ -408,6 +418,7 @@ function transicionar(req, res, nextStatus) {
 
   if (nextStatus === STATUS.REJECTED) {
     const pixPago = pedido.paymentMethod === PAYMENT_METHOD.PIX && pedido.paymentStatus === PAYMENT_STATUS.CONFIRMED;
+    // needsRefund = 1 sinaliza que o admin precisa executar o estorno manualmente via dashboard
     const needsRefund = pixPago ? 1 : 0;
 
     db.prepare(`
@@ -415,26 +426,28 @@ function transicionar(req, res, nextStatus) {
       SET status = 'REJECTED', motivo_cancelamento = 'manual', needs_refund = ?, atualizado_em = datetime('now')
       WHERE numero = ?
     `).run(needsRefund, req.params.numero);
-
-    // Estorno automático via Mercado Pago
-    if (pixPago && pedido.mpPaymentId && mpAtivo()) {
-      estornar(pedido.mpPaymentId)
-        .then(() => {
-          db.prepare(`UPDATE pedidos SET needs_refund = 0, atualizado_em = datetime('now') WHERE numero = ?`)
-            .run(req.params.numero);
-          req.io?.to('admin').emit('status_atualizado', buscarPedido(req.params.numero));
-          console.log(`[mp] estorno realizado para #${req.params.numero}`);
-        })
-        .catch(err => {
-          console.error(`[mp] falha no estorno de #${req.params.numero}:`, err.message);
-        });
-    }
   } else {
     db.prepare(`UPDATE pedidos SET status = ?, atualizado_em = datetime('now') WHERE numero = ?`).run(nextStatus, req.params.numero);
   }
 
   const atualizado = buscarPedido(req.params.numero);
   req.io?.to('admin').emit('status_atualizado', atualizado);
+
+  // Notifica o cliente via WhatsApp quando o pedido PIX é aceito
+  if (nextStatus === STATUS.IN_PRODUCTION
+      && pedido.paymentMethod === PAYMENT_METHOD.PIX
+      && pedido.paymentStatus === PAYMENT_STATUS.CONFIRMED
+      && pedido.telefone) {
+    const primeiroNome = pedido.cliente.split(' ')[0];
+    const msg =
+      `Olá, ${primeiroNome}! 🎉\n` +
+      `Seu pedido *#${pedido.numero}* foi confirmado e já está sendo preparado!\n` +
+      `Pagamento PIX recebido com sucesso ✅\n\n` +
+      `Em caso de dúvidas, é só responder aqui!`;
+    enviarMensagem(pedido.telefone, msg)
+      .catch(err => console.error(`[whatsapp] falha ao notificar #${pedido.numero}:`, err.message));
+  }
+
   return res.json(atualizado);
 }
 

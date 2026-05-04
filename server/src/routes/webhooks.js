@@ -1,6 +1,34 @@
+import { createHmac } from 'crypto';
 import { Router } from 'express';
 import db from '../db/schema.js';
 import { buscarPagamento } from '../lib/mp.js';
+
+if (!process.env.MP_WEBHOOK_SECRET) {
+  console.warn('[webhook] MP_WEBHOOK_SECRET não configurado — verificação de assinatura desativada');
+}
+
+// Verifica se a notificação veio realmente do Mercado Pago.
+// Usa HMAC-SHA256 com o segredo configurado no painel MP → Webhooks.
+function assinaturaValida(req) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return true; // sem segredo configurado, aceita (MP_API verifica no double-check)
+
+  const xSig = req.headers['x-signature'] ?? '';
+  const xReqId = req.headers['x-request-id'] ?? '';
+  const parts = Object.fromEntries(xSig.split(',').map(p => p.split('=')));
+  const ts = parts.ts;
+  const v1 = parts.v1;
+
+  if (!ts || !v1) {
+    console.warn('[webhook] assinatura ausente — requisição rejeitada');
+    return false;
+  }
+
+  const dataId = req.body?.data?.id ?? '';
+  const manifest = `id:${dataId};request-id:${xReqId};ts:${ts}`;
+  const hash = createHmac('sha256', secret).update(manifest).digest('hex');
+  return hash === v1;
+}
 
 const router = Router();
 
@@ -39,8 +67,14 @@ function mapBasico(r) {
 }
 
 // Mercado Pago envia POST neste endpoint ao detectar mudança de status no pagamento.
-// Respondemos 200 imediatamente e processamos em background para evitar retries.
+// Respondemos 200 imediatamente e processamos em background para evitar retries do MP.
 router.post('/mercadopago', async (req, res) => {
+  // Verifica assinatura ANTES de processar
+  if (!assinaturaValida(req)) {
+    console.warn('[webhook] assinatura inválida — notificação ignorada');
+    return res.status(200).json({ ok: true }); // 200 para MP não retentar; mas não processamos
+  }
+
   res.status(200).json({ ok: true });
 
   try {

@@ -23,6 +23,8 @@ import bairrosRouter       from './routes/bairros.js';
 import configuracoesRouter from './routes/configuracoes.js';
 import clientesRouter      from './routes/clientes.js';
 import webhooksRouter      from './routes/webhooks.js';
+import whatsappRouter      from './routes/whatsapp.js';
+import { initWhatsApp }    from './lib/whatsapp.js';
 
 // ─── Verificação de segurança na inicialização ────────────────────────────────
 const ADMIN_KEY = process.env.ADMIN_API_KEY ?? '';
@@ -153,6 +155,7 @@ app.use('/api/cardapio',      cardapioRouter);
 app.use('/api/bairros',       bairrosRouter);
 app.use('/api/configuracoes', configuracoesRouter);
 app.use('/api/clientes',      clientesRouter);
+app.use('/api/whatsapp',      whatsappRouter);
 
 // 404 genérico — sem stack trace
 app.use((_req, res) => res.status(404).json({ erro: 'Endpoint não encontrado' }));
@@ -206,6 +209,7 @@ http.listen(PORT, () => {
   const env = process.env.NODE_ENV ?? 'development';
   console.log(`\n🍱  Sabor D'Casa — API [${env}] — porta ${PORT}\n`);
   iniciarAgendamentoLimpeza();
+  initWhatsApp(io);
 });
 
 http.on('error', (err) => {
