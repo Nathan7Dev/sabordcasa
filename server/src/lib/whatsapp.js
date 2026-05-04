@@ -30,15 +30,20 @@ async function apiFetch(path, opts = {}) {
 
 // Cria a instância e configura o webhook uma única vez
 async function garantirInstancia() {
-  const lista = await apiFetch('/instance/fetchInstances').catch(() => []);
+  const lista = await apiFetch('/instance/fetchInstances').catch(err => {
+    console.error('[whatsapp] fetchInstances falhou:', err.message);
+    return [];
+  });
+  console.log('[whatsapp] instâncias encontradas:', JSON.stringify(lista?.map?.(i => i.instance?.instanceName)));
   const existe = Array.isArray(lista) && lista.some(i => i.instance?.instanceName === INST());
-  if (existe) return;
+  if (existe) { console.log(`[whatsapp] instância "${INST()}" já existe`); return; }
 
   const webhookUrl = process.env.SERVER_URL
     ? `${process.env.SERVER_URL}/api/webhooks/evolution`
     : null;
 
-  await apiFetch('/instance/create', {
+  console.log(`[whatsapp] criando instância "${INST()}" — webhook: ${webhookUrl}`);
+  const resp = await apiFetch('/instance/create', {
     method: 'POST',
     body: JSON.stringify({
       instanceName: INST(),
@@ -54,7 +59,7 @@ async function garantirInstancia() {
       } : {}),
     }),
   });
-  console.log(`[whatsapp] instância "${INST()}" criada`);
+  console.log('[whatsapp] instância criada:', JSON.stringify(resp));
 }
 
 async function sincronizarStatus() {
@@ -62,6 +67,7 @@ async function sincronizarStatus() {
   const inst  = Array.isArray(lista) && lista.find(i => i.instance?.instanceName === INST());
   if (!inst) return;
   const state = inst.instance?.state ?? inst.instance?.connectionStatus;
+  console.log(`[whatsapp] estado atual da instância: ${state}`);
   if (state === 'open') {
     _status = 'connected';
     _io?.to('admin').emit('whatsapp_ready', {});
@@ -94,16 +100,27 @@ export async function reconectar() {
   try {
     await garantirInstancia();
     const data = await apiFetch(`/instance/connect/${INST()}`);
-    if (data.base64) {
+    console.log('[whatsapp] /instance/connect resposta:', JSON.stringify(data));
+
+    // Evolution API v2 pode retornar o QR em diferentes estruturas
+    const qrBase64 =
+      data?.base64 ??
+      data?.qrcode?.base64 ??
+      data?.qr?.base64 ??
+      (typeof data?.code === 'string' && data.code.startsWith('data:') ? data.code : null);
+
+    if (qrBase64) {
       _status    = 'qr';
-      _qrDataUrl = data.base64;
+      _qrDataUrl = qrBase64;
       _io?.to('admin').emit('whatsapp_qr', { qr: _qrDataUrl });
+      console.log('[whatsapp] QR emitido para o dashboard');
     } else {
-      // Já estava conectado
+      console.log('[whatsapp] sem QR na resposta — sincronizando status');
       await sincronizarStatus();
     }
   } catch (err) {
     _status = 'disconnected';
+    console.error('[whatsapp] reconectar falhou:', err.message);
     _io?.to('admin').emit('whatsapp_disconnected', { reason: err.message });
     throw err;
   }
@@ -139,12 +156,14 @@ export function getStatus() {
 
 // ─── Processamento de eventos vindos do webhook da Evolution API ───────────────
 export function handleEvolutionWebhook(event, data) {
-  if (event === 'qrcode.updated') {
+  const ev = (event ?? '').toLowerCase().replace(/_/g, '.');
+  console.log(`[whatsapp] webhook recebido: ${event}`);
+  if (ev === 'qrcode.updated') {
     _status    = 'qr';
     _qrDataUrl = data?.qrcode?.base64 ?? null;
     _io?.to('admin').emit('whatsapp_qr', { qr: _qrDataUrl });
 
-  } else if (event === 'connection.update') {
+  } else if (ev === 'connection.update') {
     const state = data?.state ?? data?.instance?.state;
     if (state === 'open') {
       _status    = 'connected';
@@ -157,7 +176,7 @@ export function handleEvolutionWebhook(event, data) {
       _io?.to('admin').emit('whatsapp_disconnected', { reason: 'conexão encerrada' });
     }
 
-  } else if (event === 'messages.upsert') {
+  } else if (ev === 'messages.upsert') {
     // Ignora mensagens enviadas pela própria conta e grupos
     if (data?.key?.fromMe) return;
     const jid = data?.key?.remoteJid ?? '';
