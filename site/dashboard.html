@@ -1665,79 +1665,174 @@
     .pag-btn-confirm:disabled, .pag-btn-estorno:disabled { opacity: .5; cursor: not-allowed }
 
     /* ── WhatsApp ── */
-    .wpp-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: var(--gap);
-      flex-wrap: wrap;
-    }
-    .wpp-status-bar { display: flex; align-items: center; gap: 8px }
-    .wpp-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: var(--border2); flex-shrink: 0;
-      transition: background .3s
-    }
-    .wpp-dot--on   { background: var(--c-done) }
-    .wpp-dot--warn { background: #f59e0b }
-    .wpp-status-txt { font-size: 13px; color: var(--muted); font-weight: 600 }
-    .wpp-actions { display: flex; gap: 8px }
+    #view-whatsapp { padding: 0 !important }
 
-    .wpp-qr-card {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 12px;
-      padding: 24px;
-      display: flex; flex-direction: column; align-items: center; gap: 16px;
-      max-width: 380px; margin-bottom: var(--gap);
+    .wpp-offline-area {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 420px; padding: var(--gap);
     }
-    .wpp-qr-hint { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; margin: 0 }
-    .wpp-qr-img  { width: 220px; height: 220px; border-radius: 8px; border: 1px solid var(--border2) }
+    .wpp-offline-card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 40px 32px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      text-align: center; max-width: 380px; width: 100%;
+    }
+    .wpp-offline-icon  { font-size: 52px }
+    .wpp-offline-title { font-size: 18px; font-weight: 700; color: var(--text) }
+    .wpp-offline-sub   { font-size: 13px; color: var(--muted); line-height: 1.5 }
 
-    .wpp-msgs {
-      max-height: 320px;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex; flex-direction: column; gap: 10px;
+    .wpp-qr-title { font-size: 17px; font-weight: 700; color: var(--text) }
+    .wpp-qr-steps { font-size: 12px; color: var(--muted); line-height: 1.55; max-width: 280px }
+    .wpp-qr-img   { width: 220px; height: 220px; border-radius: 10px; border: 1px solid var(--border2) }
+    .wpp-qr-waiting { font-size: 12px; color: var(--light); display: flex; align-items: center; gap: 6px }
+
+    .wpp-spinner {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--border2); border-top-color: #25d366;
+      animation: wppSpin .8s linear infinite; display: inline-block;
     }
-    .wpp-msgs-vazia { font-size: 13px; color: var(--light); padding: 8px 0 }
-    .wpp-msg {
+    .wpp-spinner-lg {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 3px solid var(--border2); border-top-color: #25d366;
+      animation: wppSpin .8s linear infinite;
+    }
+    @keyframes wppSpin { to { transform: rotate(360deg) } }
+
+    /* Layout dois painéis */
+    .wpp-layout {
+      display: grid; grid-template-columns: 320px 1fr;
+      border-top: 1px solid var(--border2);
+      height: calc(100vh - 142px); min-height: 500px; overflow: hidden;
+    }
+    @media (max-width: 700px) { .wpp-layout { grid-template-columns: 1fr } }
+
+    /* Sidebar conversas */
+    .wpp-sidebar {
+      background: var(--surface); border-right: 1px solid var(--border2);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .wpp-sidebar-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: #075e54; flex-shrink: 0;
+    }
+    .wpp-sidebar-title { font-size: 16px; font-weight: 700; color: #fff }
+    .wpp-sidebar-header-actions { display: flex; gap: 4px; align-items: center }
+
+    .wpp-conv-list { overflow-y: auto; flex: 1 }
+    .wpp-conv-empty {
+      padding: 28px 16px; font-size: 13px; color: var(--light);
+      text-align: center; line-height: 1.6;
+    }
+    .wpp-conv-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 16px; cursor: pointer;
+      border-bottom: 1px solid var(--border2); transition: background .1s;
+    }
+    .wpp-conv-item:hover  { background: var(--bg) }
+    .wpp-conv-item.active { background: #128c7e1a }
+    .wpp-conv-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #25d36622;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .wpp-conv-info  { flex: 1; min-width: 0 }
+    .wpp-conv-tel   { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+    .wpp-conv-prev  { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+    .wpp-conv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0 }
+    .wpp-conv-hora  { font-size: 11px; color: var(--light) }
+    .wpp-conv-badge {
+      background: #25d366; color: #fff; font-size: 11px; font-weight: 700;
+      border-radius: 50%; min-width: 18px; height: 18px;
+      display: flex; align-items: center; justify-content: center; padding: 0 4px;
+    }
+
+    /* Botões ícone */
+    .wpp-icon-btn {
+      background: transparent; border: none; font-size: 16px;
+      cursor: pointer; padding: 5px 7px; border-radius: 7px;
+      color: rgba(255,255,255,.85); transition: background .12s, opacity .12s;
+    }
+    .wpp-icon-btn:hover { background: rgba(255,255,255,.18) }
+    .wpp-icon-btn--danger:hover { background: rgba(255,80,80,.25) }
+    .wpp-dot { width: 9px; height: 9px; border-radius: 50%; background: #25d366; flex-shrink: 0 }
+
+    /* Painel chat */
+    .wpp-chat-panel {
+      background: var(--bg); display: flex;
+      flex-direction: column; overflow: hidden; position: relative;
+    }
+    .wpp-chat-empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; gap: 10px; color: var(--light);
+    }
+    .wpp-chat-empty-icon { font-size: 52px; opacity: .3 }
+    .wpp-chat-empty-text { font-size: 16px; font-weight: 600 }
+    .wpp-chat-empty-sub  { font-size: 13px }
+
+    /* Header do chat ativo */
+    .wpp-chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; background: #075e54; flex-shrink: 0;
+    }
+    .wpp-chat-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .wpp-chat-contact-info  { flex: 1 }
+    .wpp-chat-contact-name  { font-size: 15px; font-weight: 700; color: #fff }
+    .wpp-chat-contact-sub   { font-size: 11px; color: rgba(255,255,255,.7) }
+
+    /* Bolhas */
+    .wpp-bubbles {
+      flex: 1; overflow-y: auto; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 3px;
       background: var(--bg);
+    }
+    .wpp-bwrap       { display: flex; margin-bottom: 1px }
+    .wpp-bwrap.mine  { justify-content: flex-end }
+    .wpp-bubble {
+      max-width: 68%; padding: 7px 11px 2px;
+      font-size: 13.5px; line-height: 1.45; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .wpp-bwrap:not(.mine) .wpp-bubble {
+      background: var(--surface); border-radius: 0 10px 10px 10px;
       border: 1px solid var(--border2);
-      border-radius: 10px;
-      padding: 10px 12px;
     }
-    .wpp-msg--out { background: #1e3a5f22; border-color: #3b82f640 }
-    .wpp-msg-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px }
-    .wpp-msg-de   { font-size: 11px; font-weight: 700; color: #3b82f6 }
-    .wpp-msg-enviada { font-size: 11px; font-weight: 700; color: var(--c-done) }
-    .wpp-msg-hora { font-size: 11px; color: var(--light) }
-    .wpp-msg-body { font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word }
-    .wpp-reply-btn {
-      margin-top: 6px; font-size: 11px; padding: 3px 9px;
-      background: transparent; border: 1px solid var(--border2);
-      border-radius: 6px; cursor: pointer; color: var(--muted);
-      font-family: inherit; transition: all .12s
+    .wpp-bwrap.mine .wpp-bubble {
+      background: #dcf8c6; color: #111;
+      border-radius: 10px 0 10px 10px;
     }
-    .wpp-reply-btn:hover { border-color: #3b82f6; color: #3b82f6 }
+    .wpp-btime {
+      font-size: 10px; color: #888; text-align: right; margin-top: 3px; padding-bottom: 4px;
+    }
+    .wpp-bwrap.mine .wpp-btime { color: #555 }
 
-    .wpp-send-form { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px }
-    .wpp-send-row  { display: flex; flex-direction: column; gap: 5px }
-    .wpp-label     { font-size: 12px; font-weight: 600; color: var(--muted) }
-    .wpp-input, .wpp-textarea {
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 13px;
-      font-family: inherit;
-      padding: 8px 10px;
-      outline: none;
-      transition: border-color .12s;
-      resize: vertical;
+    /* Barra de input */
+    .wpp-input-bar {
+      display: flex; align-items: flex-end; gap: 8px;
+      padding: 8px 12px; background: var(--surface);
+      border-top: 1px solid var(--border2); flex-shrink: 0;
     }
-    .wpp-input:focus, .wpp-textarea:focus { border-color: #3b82f6 }
+    .wpp-input-msg {
+      flex: 1; border: 1px solid var(--border2); border-radius: 22px;
+      padding: 8px 14px; font-size: 13.5px; font-family: inherit;
+      background: var(--bg); color: var(--text); outline: none;
+      resize: none; min-height: 38px; max-height: 120px;
+      overflow-y: auto; line-height: 1.45; transition: border-color .12s;
+    }
+    .wpp-input-msg:focus { border-color: #25d366 }
+    .wpp-send-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #25d366; color: #fff; border: none;
+      font-size: 17px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .12s;
+    }
+    .wpp-send-btn:hover { background: #128c7e }
 
     .rel-header {
       display: flex;
@@ -2864,58 +2959,84 @@
   <!-- ── WhatsApp ──────────────────────────────────────────────────────────── -->
   <section id="view-whatsapp" style="display:none">
 
-    <!-- Status de conexão -->
-    <div class="wpp-header">
-      <div class="wpp-status-bar">
-        <span class="wpp-dot" id="wpp-dot"></span>
-        <span class="wpp-status-txt" id="wpp-status-txt">verificando…</span>
-      </div>
-      <div class="wpp-actions">
-        <button class="btn-secondary" id="wpp-btn-reconectar" onclick="wppReconectar()" style="display:none">Reconectar</button>
-        <button class="btn-secondary" id="wpp-btn-desconectar" onclick="wppDesconectar()" style="display:none">Desconectar</button>
+    <!-- Desconectado -->
+    <div id="wpp-offline" class="wpp-offline-area">
+      <div class="wpp-offline-card">
+        <div class="wpp-offline-icon">💬</div>
+        <div class="wpp-offline-title">WhatsApp desconectado</div>
+        <div class="wpp-offline-sub">Conecte o WhatsApp da loja para enviar e receber mensagens com os clientes.</div>
+        <button class="btn-primary" onclick="wppReconectar()">Conectar WhatsApp</button>
       </div>
     </div>
 
     <!-- QR code -->
-    <div id="wpp-qr-area" style="display:none">
-      <div class="wpp-qr-card">
-        <p class="wpp-qr-hint">Abra o WhatsApp no celular → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong> e aponte para o QR:</p>
-        <img id="wpp-qr-img" src="" alt="QR Code WhatsApp" class="wpp-qr-img">
+    <div id="wpp-qr-area" class="wpp-offline-area" style="display:none">
+      <div class="wpp-offline-card">
+        <div class="wpp-qr-title">Escanear QR Code</div>
+        <div class="wpp-qr-steps">No celular: <strong>WhatsApp → ⋮ → Dispositivos conectados → Conectar dispositivo</strong></div>
+        <img id="wpp-qr-img" src="" alt="QR Code" class="wpp-qr-img">
+        <div class="wpp-qr-waiting">Aguardando scan… <span class="wpp-spinner"></span></div>
       </div>
     </div>
 
-    <!-- Painel conectado -->
-    <div id="wpp-connected-area" style="display:none">
+    <!-- Conectando -->
+    <div id="wpp-connecting-area" class="wpp-offline-area" style="display:none">
+      <div class="wpp-offline-card">
+        <div class="wpp-spinner-lg"></div>
+        <div class="wpp-offline-title">Conectando…</div>
+        <div class="wpp-offline-sub">Aguarde alguns segundos.</div>
+      </div>
+    </div>
 
-      <!-- Mensagens recebidas -->
-      <div class="rel-table-wrap" style="margin-bottom:16px">
-        <div class="rel-table-head">
-          <span class="rel-table-title">Mensagens recebidas</span>
-          <button class="rel-apply" onclick="wppLimparMensagens()">Limpar</button>
+    <!-- Interface de chat (conectado) -->
+    <div id="wpp-chat-area" class="wpp-layout" style="display:none">
+
+      <!-- Sidebar: lista de conversas -->
+      <div class="wpp-sidebar">
+        <div class="wpp-sidebar-header">
+          <span class="wpp-sidebar-title">Conversas</span>
+          <div class="wpp-sidebar-header-actions">
+            <span class="wpp-dot" title="Conectado"></span>
+            <button class="wpp-icon-btn" title="Nova conversa" onclick="wppNovaConversa()">✏️</button>
+            <button class="wpp-icon-btn wpp-icon-btn--danger" title="Desconectar WhatsApp" onclick="wppDesconectar()">⏻</button>
+          </div>
         </div>
-        <div id="wpp-msgs" class="wpp-msgs">
-          <div class="wpp-msgs-vazia">Nenhuma mensagem ainda. As mensagens chegam em tempo real.</div>
+        <div class="wpp-conv-list" id="wpp-conv-list">
+          <div class="wpp-conv-empty">Nenhuma conversa ainda.<br>As mensagens chegam em tempo real.</div>
         </div>
       </div>
 
-      <!-- Enviar mensagem manual -->
-      <div class="rel-table-wrap">
-        <div class="rel-table-head">
-          <span class="rel-table-title">Enviar mensagem</span>
-        </div>
-        <div class="wpp-send-form">
-          <div class="wpp-send-row">
-            <label class="wpp-label">Telefone (com DDD)</label>
-            <input type="tel" id="wpp-send-tel" class="wpp-input" placeholder="11999999999">
-          </div>
-          <div class="wpp-send-row">
-            <label class="wpp-label">Mensagem</label>
-            <textarea id="wpp-send-msg" class="wpp-textarea" rows="3" placeholder="Digite a mensagem…"></textarea>
-          </div>
-          <button class="btn-primary" onclick="wppEnviar()">Enviar</button>
-        </div>
-      </div>
+      <!-- Painel direito: chat ativo -->
+      <div class="wpp-chat-panel">
 
+        <!-- Vazio: nenhuma conversa selecionada -->
+        <div class="wpp-chat-empty" id="wpp-chat-empty">
+          <div class="wpp-chat-empty-icon">💬</div>
+          <div class="wpp-chat-empty-text">Selecione uma conversa</div>
+          <div class="wpp-chat-empty-sub">ou toque em ✏️ para iniciar uma nova</div>
+        </div>
+
+        <!-- Chat ativo -->
+        <div id="wpp-chat-active" style="display:none;flex-direction:column;height:100%">
+          <div class="wpp-chat-header">
+            <div class="wpp-chat-avatar">👤</div>
+            <div class="wpp-chat-contact-info">
+              <div class="wpp-chat-contact-name" id="wpp-chat-contact-name">—</div>
+              <div class="wpp-chat-contact-sub" id="wpp-chat-contact-sub"></div>
+            </div>
+            <button class="wpp-icon-btn" onclick="wppFecharChat()" title="Fechar">✕</button>
+          </div>
+          <div class="wpp-bubbles" id="wpp-bubbles"></div>
+          <div class="wpp-input-bar">
+            <textarea class="wpp-input-msg" id="wpp-input-msg"
+              placeholder="Digite uma mensagem…" rows="1"
+              onkeydown="wppEnterSend(event)"
+              oninput="wppAutoResize(this)"></textarea>
+            <button class="wpp-send-btn" onclick="wppEnviarChat()" title="Enviar">➤</button>
+          </div>
+        </div>
+
+      </div>
     </div>
 
   </section>
@@ -3038,7 +3159,10 @@
       socket.on('whatsapp_qr', ({ qr }) => wppSetEstado('qr', qr));
       socket.on('whatsapp_ready', () => wppSetEstado('connected'));
       socket.on('whatsapp_disconnected', () => wppSetEstado('disconnected'));
-      socket.on('whatsapp_message', msg => wppReceberMensagem(msg));
+      socket.on('whatsapp_message', ({ from, body, timestamp }) =>
+        wppAddMsg(from, { body, ts: timestamp, mine: false }));
+      socket.on('whatsapp_sent', ({ to, body, timestamp }) =>
+        wppAddMsg(to, { body, ts: timestamp, mine: true }));
       socket.on('cardapio_atualizado', () => {
         if (document.getElementById('view-cardapio').style.display !== 'none') carregarCardapio();
       });
@@ -4838,7 +4962,8 @@ ${sep}
     //  WHATSAPP
     // ══════════════════════════════════════════════════════════════════════════════
 
-    const _wppMsgs = []; // histórico de mensagens em memória (apenas session atual)
+    const _wppConversas = new Map(); // tel → { msgs:[{body,ts,mine}], naoLidas, ultimaMsg, ultimaTs }
+    let _wppAtiva = null; // telefone da conversa aberta
 
     async function wppCarregarStatus() {
       try {
@@ -4850,117 +4975,149 @@ ${sep}
     }
 
     function wppSetEstado(status, qr = null) {
-      const dot  = document.getElementById('wpp-dot');
-      const txt  = document.getElementById('wpp-status-txt');
-      const qrEl = document.getElementById('wpp-qr-area');
-      const con  = document.getElementById('wpp-connected-area');
-      const btnR = document.getElementById('wpp-btn-reconectar');
-      const btnD = document.getElementById('wpp-btn-desconectar');
-
-      dot.className = 'wpp-dot';
-      qrEl.style.display = 'none';
-      con.style.display  = 'none';
-      btnR.style.display = 'none';
-      btnD.style.display = 'none';
+      const ids = ['wpp-offline', 'wpp-qr-area', 'wpp-connecting-area', 'wpp-chat-area'];
+      ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
       if (status === 'connected') {
-        dot.classList.add('wpp-dot--on');
-        txt.textContent = 'Conectado';
-        con.style.display = '';
-        btnD.style.display = '';
+        document.getElementById('wpp-chat-area').style.display = '';
       } else if (status === 'qr') {
-        dot.classList.add('wpp-dot--warn');
-        txt.textContent = 'Aguardando scan do QR code…';
-        if (qr) {
-          document.getElementById('wpp-qr-img').src = qr;
-          qrEl.style.display = '';
-        }
+        if (qr) document.getElementById('wpp-qr-img').src = qr;
+        document.getElementById('wpp-qr-area').style.display = '';
       } else if (status === 'connecting') {
-        dot.classList.add('wpp-dot--warn');
-        txt.textContent = 'Conectando…';
+        document.getElementById('wpp-connecting-area').style.display = '';
       } else {
-        txt.textContent = 'Desconectado';
-        btnR.style.display = '';
+        document.getElementById('wpp-offline').style.display = '';
       }
     }
 
     async function wppReconectar() {
-      const btn = document.getElementById('wpp-btn-reconectar');
-      btn.disabled = true;
-      btn.textContent = 'Reconectando…';
-      // Define estado imediatamente; resultado real chega via socket (qr/ready/disconnected)
       wppSetEstado('connecting');
       try {
         await fetch(`${API}/whatsapp/reconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
-      } catch { wppSetEstado('disconnected'); } finally {
-        btn.disabled = false;
-        btn.textContent = 'Reconectar';
-      }
+      } catch { wppSetEstado('disconnected'); }
     }
 
     async function wppDesconectar() {
-      if (!confirm('Deseja desconectar o WhatsApp? A sessão será encerrada.')) return;
+      if (!confirm('Desconectar o WhatsApp? A sessão será encerrada.')) return;
       try {
         await fetch(`${API}/whatsapp/desconectar`, { method: 'POST', headers: { 'x-api-key': apiKey } });
         wppSetEstado('disconnected');
-      } catch (e) { alert('Erro ao desconectar: ' + e.message); }
+      } catch (e) { alert('Erro: ' + e.message); }
     }
 
-    async function wppEnviar() {
-      const tel = document.getElementById('wpp-send-tel').value.trim();
-      const msg = document.getElementById('wpp-send-msg').value.trim();
-      if (!tel || !msg) return alert('Preencha o telefone e a mensagem.');
-      try {
-        const r = await fetch(`${API}/whatsapp/enviar`, {
-          method: 'POST',
-          headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telefone: tel, mensagem: msg }),
-        });
-        if (!r.ok) { const d = await r.json(); return alert('Erro: ' + d.erro); }
-        document.getElementById('wpp-send-msg').value = '';
-        // Adiciona mensagem enviada na lista
-        wppReceberMensagem({ from: tel, body: msg, timestamp: Date.now() / 1000, enviada: true });
-      } catch (e) { alert('Erro ao enviar: ' + e.message); }
+    function wppNovaConversa() {
+      const tel = prompt('Número do WhatsApp (com DDD, só números):');
+      if (!tel) return;
+      const num = tel.replace(/\D/g, '');
+      if (!num) return;
+      if (!_wppConversas.has(num)) _wppConversas.set(num, { msgs: [], naoLidas: 0, ultimaMsg: '', ultimaTs: 0 });
+      wppRenderConvList();
+      wppAbrirConversa(num);
     }
 
-    function wppReceberMensagem({ from, body, timestamp, enviada = false }) {
-      _wppMsgs.push({ from, body, timestamp, enviada });
-      // Mostra a notificação na aba se não estiver visível
-      const tabBtn = document.getElementById('tab-whatsapp');
-      if (document.getElementById('view-whatsapp').style.display === 'none' && !enviada) {
-        tabBtn.textContent = 'WhatsApp 🔴';
+    function wppAbrirConversa(tel) {
+      _wppAtiva = tel;
+      const conv = _wppConversas.get(tel);
+      if (conv) conv.naoLidas = 0;
+      const temNaoLidas = [..._wppConversas.values()].some(c => c.naoLidas > 0);
+      if (!temNaoLidas) document.getElementById('tab-whatsapp').textContent = 'WhatsApp';
+      document.getElementById('wpp-chat-contact-name').textContent = tel;
+      document.getElementById('wpp-chat-contact-sub').textContent = '+' + tel;
+      document.getElementById('wpp-chat-empty').style.display = 'none';
+      const active = document.getElementById('wpp-chat-active');
+      active.style.display = 'flex';
+      wppRenderConvList();
+      wppRenderChat();
+      const inp = document.getElementById('wpp-input-msg');
+      if (inp) inp.focus();
+    }
+
+    function wppFecharChat() {
+      _wppAtiva = null;
+      document.getElementById('wpp-chat-empty').style.display = '';
+      document.getElementById('wpp-chat-active').style.display = 'none';
+      wppRenderConvList();
+    }
+
+    function wppAddMsg(tel, { body, ts, mine = false }) {
+      if (!_wppConversas.has(tel)) _wppConversas.set(tel, { msgs: [], naoLidas: 0, ultimaMsg: '', ultimaTs: 0 });
+      const conv = _wppConversas.get(tel);
+      conv.msgs.push({ body, ts, mine });
+      conv.ultimaMsg = mine ? `Você: ${body}` : body;
+      conv.ultimaTs  = ts;
+      if (!mine && _wppAtiva !== tel) {
+        conv.naoLidas++;
+        document.getElementById('tab-whatsapp').textContent = 'WhatsApp 🔴';
       }
-      wppRenderMensagens();
+      wppRenderConvList();
+      if (_wppAtiva === tel) wppRenderChat();
     }
 
-    function wppRenderMensagens() {
-      const el = document.getElementById('wpp-msgs');
+    function wppRenderConvList() {
+      const el = document.getElementById('wpp-conv-list');
       if (!el) return;
-      if (!_wppMsgs.length) {
-        el.innerHTML = '<div class="wpp-msgs-vazia">Nenhuma mensagem ainda. As mensagens chegam em tempo real.</div>';
+      if (!_wppConversas.size) {
+        el.innerHTML = '<div class="wpp-conv-empty">Nenhuma conversa ainda.<br>As mensagens chegam em tempo real.</div>';
         return;
       }
-      el.innerHTML = _wppMsgs.slice(-50).map(m => {
-        const hora = new Date(m.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const de   = m.enviada ? `<span class="wpp-msg-enviada">→ ${esc(m.from)}</span>` : `<span class="wpp-msg-de">${esc(m.from)}</span>`;
-        return `<div class="wpp-msg${m.enviada ? ' wpp-msg--out' : ''}">
-          <div class="wpp-msg-meta">${de} <span class="wpp-msg-hora">${hora}</span></div>
-          <div class="wpp-msg-body">${esc(m.body)}</div>
-          ${!m.enviada ? `<button class="wpp-reply-btn" onclick="wppResponder('${esc(m.from)}')">Responder</button>` : ''}
+      const sorted = [..._wppConversas.entries()].sort((a, b) => b[1].ultimaTs - a[1].ultimaTs);
+      el.innerHTML = sorted.map(([tel, conv]) => {
+        const hora  = conv.ultimaTs ? new Date(conv.ultimaTs * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        const badge = conv.naoLidas > 0 ? `<span class="wpp-conv-badge">${conv.naoLidas}</span>` : '';
+        const cls   = tel === _wppAtiva ? ' active' : '';
+        return `<div class="wpp-conv-item${cls}" onclick="wppAbrirConversa('${esc(tel)}')">
+          <div class="wpp-conv-avatar">👤</div>
+          <div class="wpp-conv-info">
+            <div class="wpp-conv-tel">${esc(tel)}</div>
+            <div class="wpp-conv-prev">${esc((conv.ultimaMsg || '').substring(0, 45))}</div>
+          </div>
+          <div class="wpp-conv-right"><span class="wpp-conv-hora">${hora}</span>${badge}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function wppRenderChat() {
+      const el = document.getElementById('wpp-bubbles');
+      if (!el || !_wppAtiva) return;
+      const conv = _wppConversas.get(_wppAtiva);
+      if (!conv || !conv.msgs.length) { el.innerHTML = ''; return; }
+      el.innerHTML = conv.msgs.map(m => {
+        const hora = new Date(m.ts * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `<div class="wpp-bwrap${m.mine ? ' mine' : ''}">
+          <div class="wpp-bubble">${esc(m.body)}<div class="wpp-btime">${hora}${m.mine ? ' ✓' : ''}</div></div>
         </div>`;
       }).join('');
       el.scrollTop = el.scrollHeight;
     }
 
-    function wppResponder(from) {
-      document.getElementById('wpp-send-tel').value = from.replace('@c.us', '');
-      document.getElementById('wpp-send-msg').focus();
+    async function wppEnviarChat() {
+      const inp = document.getElementById('wpp-input-msg');
+      const msg = inp.value.trim();
+      if (!msg || !_wppAtiva) return;
+      inp.value = '';
+      inp.style.height = '';
+      const ts = Date.now() / 1000;
+      wppAddMsg(_wppAtiva, { body: msg, ts, mine: true }); // otimista
+      try {
+        const r = await fetch(`${API}/whatsapp/enviar`, {
+          method: 'POST',
+          headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefone: _wppAtiva, mensagem: msg }),
+        });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          alert('Erro ao enviar: ' + (d.erro || 'tente novamente'));
+        }
+      } catch (e) { alert('Erro: ' + e.message); }
     }
 
-    function wppLimparMensagens() {
-      _wppMsgs.length = 0;
-      document.getElementById('tab-whatsapp').textContent = 'WhatsApp';
-      wppRenderMensagens();
+    function wppEnterSend(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); wppEnviarChat(); }
+    }
+
+    function wppAutoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
     }
 
     // ── Timeout de inatividade (30 min) — limpa sessão admin ─────────────────────

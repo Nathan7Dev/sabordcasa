@@ -433,19 +433,23 @@ function transicionar(req, res, nextStatus) {
   const atualizado = buscarPedido(req.params.numero);
   req.io?.to('admin').emit('status_atualizado', atualizado);
 
-  // Notifica o cliente via WhatsApp quando o pedido PIX é aceito
-  if (nextStatus === STATUS.IN_PRODUCTION
-      && pedido.paymentMethod === PAYMENT_METHOD.PIX
-      && pedido.paymentStatus === PAYMENT_STATUS.CONFIRMED
-      && pedido.telefone) {
-    const primeiroNome = pedido.cliente.split(' ')[0];
-    const msg =
-      `Olá, ${primeiroNome}! 🎉\n` +
-      `Seu pedido *#${pedido.numero}* foi confirmado e já está sendo preparado!\n` +
-      `Pagamento PIX recebido com sucesso ✅\n\n` +
-      `Em caso de dúvidas, é só responder aqui!`;
-    enviarMensagem(pedido.telefone, msg)
-      .catch(err => console.error(`[whatsapp] falha ao notificar #${pedido.numero}:`, err.message));
+  // Notificações automáticas por WhatsApp conforme o status muda
+  if (pedido.telefone) {
+    const nome = pedido.cliente.split(' ')[0];
+    let msg = null;
+
+    if (nextStatus === STATUS.IN_PRODUCTION) {
+      msg = `Olá, ${nome}! ✅\nSeu pedido *#${pedido.numero}* foi aceito e já está sendo preparado! 🍱\n\nEm caso de dúvidas, é só responder aqui.`;
+    } else if (nextStatus === STATUS.OUT_FOR_DELIVERY) {
+      msg = `🛵 Olá, ${nome}!\nSeu pedido *#${pedido.numero}* acabou de sair para entrega!\nAguarde, estamos a caminho.`;
+    } else if (nextStatus === STATUS.DONE && pedido.tipoEntrega === 'retirada') {
+      msg = `✅ Olá, ${nome}!\nSeu pedido *#${pedido.numero}* está pronto para retirada!\nPode passar quando quiser 😊`;
+    }
+
+    if (msg) {
+      enviarMensagem(pedido.telefone, msg)
+        .catch(err => console.error(`[whatsapp] falha ao notificar #${pedido.numero}:`, err.message));
+    }
   }
 
   return res.json(atualizado);

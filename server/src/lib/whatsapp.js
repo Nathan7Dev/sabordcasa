@@ -115,6 +115,9 @@ export async function enviarMensagem(telefone, texto) {
   if (_status !== 'connected') throw new Error('WhatsApp não conectado');
   const chatId = normalizarTelefone(telefone);
   await client.sendMessage(chatId, texto);
+  // Notifica o dashboard para exibir a mensagem na conversa
+  const digits = telefone.replace(/\D/g, '');
+  _io?.to('admin').emit('whatsapp_sent', { to: digits, body: texto, timestamp: Date.now() / 1000 });
 }
 
 export function getStatus() {
