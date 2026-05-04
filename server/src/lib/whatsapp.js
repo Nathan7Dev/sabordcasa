@@ -3,7 +3,8 @@ let _io     = null;
 let _status = 'disconnected'; // 'disconnected' | 'connecting' | 'qr' | 'connected'
 let _qrDataUrl = null;
 
-const BASE = () => (process.env.EVOLUTION_API_URL ?? '').replace(/\/$/, '');
+const BASE       = () => (process.env.EVOLUTION_API_URL ?? '').replace(/\/+$/, '');
+const SERVER_URL = () => (process.env.SERVER_URL ?? '').replace(/\/+$/, '');
 const KEY  = () => process.env.EVOLUTION_API_KEY ?? '';
 const INST = () => process.env.EVOLUTION_INSTANCE ?? 'sabordcasa';
 const ativo = () => !!(BASE() && KEY());
@@ -28,38 +29,57 @@ async function apiFetch(path, opts = {}) {
   return r.json().catch(() => ({}));
 }
 
-// Cria a instância e configura o webhook uma única vez
+function webhookUrl() {
+  const base = SERVER_URL();
+  return base ? `${base}/api/webhooks/evolution` : null;
+}
+
+async function atualizarWebhook() {
+  const url = webhookUrl();
+  if (!url) return;
+  try {
+    await apiFetch(`/webhook/set/${INST()}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        url,
+        webhook_by_events: false,
+        webhook_base64:    false,
+        events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
+      }),
+    });
+    console.log(`[whatsapp] webhook atualizado → ${url}`);
+  } catch (err) {
+    console.warn('[whatsapp] falha ao atualizar webhook:', err.message);
+  }
+}
+
+// Cria a instância se não existir; sempre atualiza o webhook
 async function garantirInstancia() {
   const lista = await apiFetch('/instance/fetchInstances').catch(err => {
     console.error('[whatsapp] fetchInstances falhou:', err.message);
     return [];
   });
-  console.log('[whatsapp] instâncias encontradas:', JSON.stringify(lista?.map?.(i => i.instance?.instanceName)));
+  console.log('[whatsapp] instâncias:', JSON.stringify(lista?.map?.(i => i.instance?.instanceName)));
   const existe = Array.isArray(lista) && lista.some(i => i.instance?.instanceName === INST());
-  if (existe) { console.log(`[whatsapp] instância "${INST()}" já existe`); return; }
 
-  const webhookUrl = process.env.SERVER_URL
-    ? `${process.env.SERVER_URL}/api/webhooks/evolution`
-    : null;
-
-  console.log(`[whatsapp] criando instância "${INST()}" — webhook: ${webhookUrl}`);
-  const resp = await apiFetch('/instance/create', {
-    method: 'POST',
-    body: JSON.stringify({
-      instanceName: INST(),
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-      ...(webhookUrl ? {
-        webhook: {
-          url: webhookUrl,
-          byEvents: false,
-          base64: false,
-          events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
-        },
-      } : {}),
-    }),
-  });
-  console.log('[whatsapp] instância criada:', JSON.stringify(resp));
+  if (!existe) {
+    const url = webhookUrl();
+    console.log(`[whatsapp] criando instância "${INST()}" — webhook: ${url}`);
+    const resp = await apiFetch('/instance/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        instanceName: INST(),
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
+        ...(url ? { webhook: { url, byEvents: false, base64: false,
+          events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'] } } : {}),
+      }),
+    });
+    console.log('[whatsapp] instância criada:', JSON.stringify(resp));
+  } else {
+    console.log(`[whatsapp] instância "${INST()}" já existe — atualizando webhook`);
+    await atualizarWebhook();
+  }
 }
 
 async function sincronizarStatus() {
