@@ -5100,20 +5100,29 @@ ${sep}
       inp.style.height = '';
       if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
+      const ctrl = new AbortController();
+      const tId  = setTimeout(() => ctrl.abort(), 20000); // 20s — mata se travar
       try {
         const r = await fetch(`${API}/whatsapp/enviar`, {
           method: 'POST',
+          signal: ctrl.signal,
           headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({ telefone: _wppAtiva, mensagem: msg }),
         });
+        clearTimeout(tId);
         if (!r.ok) {
           const d = await r.json().catch(() => ({}));
-          wppMostrarErro(d.erro || 'Falha ao enviar. Verifique os logs do servidor.');
-          inp.value = msg; // devolve o texto para o usuário não perder
+          wppMostrarErro(d.erro || 'Falha ao enviar. Verifique os logs do Railway.');
+          inp.value = msg;
         }
         // sucesso: mensagem aparece via evento whatsapp_sent do socket
       } catch (e) {
-        wppMostrarErro('Sem conexão com o servidor.');
+        clearTimeout(tId);
+        if (e.name === 'AbortError') {
+          wppMostrarErro('Timeout: WhatsApp não respondeu. Reconecte pelo botão ⏻ → Conectar.');
+        } else {
+          wppMostrarErro('Sem conexão com o servidor.');
+        }
         inp.value = msg;
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = '➤'; }

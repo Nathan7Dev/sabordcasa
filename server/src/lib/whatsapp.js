@@ -112,17 +112,48 @@ export async function desconectar() {
   _qrDataUrl = null;
 }
 
+// Verifica se o cliente está realmente funcional (não só o _status local)
+export async function verificarConexao() {
+  if (!client || _status !== 'connected') return false;
+  try {
+    const state = await Promise.race([
+      client.getState(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
+    ]);
+    const ok = state === 'CONNECTED';
+    if (!ok) {
+      console.warn(`[whatsapp] getState() retornou "${state}" — marcando como desconectado`);
+      _status = 'disconnected';
+      _io?.to('admin').emit('whatsapp_disconnected', { reason: `estado: ${state}` });
+    }
+    return ok;
+  } catch {
+    console.warn('[whatsapp] getState() travou — sessão provavelmente morta');
+    _status = 'disconnected';
+    _io?.to('admin').emit('whatsapp_disconnected', { reason: 'sessão inresponsiva' });
+    return false;
+  }
+}
+
 export async function enviarMensagem(telefone, texto) {
   if (_status !== 'connected') throw new Error('WhatsApp não conectado');
+
+  // Garante que o cliente está realmente vivo antes de tentar
+  const vivo = await verificarConexao();
+  if (!vivo) throw new Error('Sessão do WhatsApp não está ativa — reconecte pelo dashboard');
+
   const chatId = normalizarTelefone(telefone);
-  console.log(`[whatsapp] enviando para ${chatId} — "${texto.substring(0, 40)}…"`);
-  try {
-    await client.sendMessage(chatId, texto);
-  } catch (err) {
-    console.error(`[whatsapp] sendMessage falhou para ${chatId}:`, err.message);
+  console.log(`[whatsapp] enviando para ${chatId}`);
+
+  await Promise.race([
+    client.sendMessage(chatId, texto),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ao enviar (15s)')), 15000)),
+  ]).catch(err => {
+    console.error(`[whatsapp] sendMessage falhou (${chatId}):`, err.message);
     throw err;
-  }
-  console.log(`[whatsapp] enviado com sucesso para ${chatId}`);
+  });
+
+  console.log(`[whatsapp] mensagem enviada para ${chatId}`);
   const digits = telefone.replace(/\D/g, '');
   _io?.to('admin').emit('whatsapp_sent', { to: digits, body: texto, timestamp: Date.now() / 1000 });
 }

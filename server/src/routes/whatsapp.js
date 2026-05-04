@@ -1,13 +1,19 @@
 // src/routes/whatsapp.js
 import { Router } from 'express';
 import { requireApiKey } from '../middleware/auth.js';
-import { getStatus, desconectar, reconectar, enviarMensagem } from '../lib/whatsapp.js';
+import { getStatus, desconectar, reconectar, enviarMensagem, verificarConexao } from '../lib/whatsapp.js';
 
 const router = Router();
 
 // Status atual + QR base64 se em estado 'qr'
-router.get('/status', requireApiKey, (_req, res) => {
-  res.json(getStatus());
+// Inclui verificação real via getState() do Puppeteer
+router.get('/status', requireApiKey, async (_req, res) => {
+  const s = getStatus();
+  if (s.status === 'connected') {
+    const vivo = await verificarConexao();
+    if (!vivo) s.status = 'disconnected';
+  }
+  res.json(s);
 });
 
 // Reinicializar cliente — responde imediatamente; resultado chega via socket (qr/ready/disconnected)
