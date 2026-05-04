@@ -3032,7 +3032,7 @@
               placeholder="Digite uma mensagem…" rows="1"
               onkeydown="wppEnterSend(event)"
               oninput="wppAutoResize(this)"></textarea>
-            <button class="wpp-send-btn" onclick="wppEnviarChat()" title="Enviar">➤</button>
+            <button class="wpp-send-btn" id="wpp-send-btn" onclick="wppEnviarChat()" title="Enviar">➤</button>
           </div>
         </div>
 
@@ -5092,12 +5092,14 @@ ${sep}
 
     async function wppEnviarChat() {
       const inp = document.getElementById('wpp-input-msg');
+      const btn = document.getElementById('wpp-send-btn');
       const msg = inp.value.trim();
       if (!msg || !_wppAtiva) return;
+
       inp.value = '';
       inp.style.height = '';
-      const ts = Date.now() / 1000;
-      wppAddMsg(_wppAtiva, { body: msg, ts, mine: true }); // otimista
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
       try {
         const r = await fetch(`${API}/whatsapp/enviar`, {
           method: 'POST',
@@ -5106,9 +5108,28 @@ ${sep}
         });
         if (!r.ok) {
           const d = await r.json().catch(() => ({}));
-          alert('Erro ao enviar: ' + (d.erro || 'tente novamente'));
+          wppMostrarErro(d.erro || 'Falha ao enviar. Verifique os logs do servidor.');
+          inp.value = msg; // devolve o texto para o usuário não perder
         }
-      } catch (e) { alert('Erro: ' + e.message); }
+        // sucesso: mensagem aparece via evento whatsapp_sent do socket
+      } catch (e) {
+        wppMostrarErro('Sem conexão com o servidor.');
+        inp.value = msg;
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '➤'; }
+        inp.focus();
+      }
+    }
+
+    function wppMostrarErro(texto) {
+      const el = document.getElementById('wpp-bubbles');
+      if (!el) return;
+      const div = document.createElement('div');
+      div.style.cssText = 'text-align:center;font-size:12px;color:#e53e3e;padding:4px 0;';
+      div.textContent = '⚠️ ' + texto;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+      setTimeout(() => div.remove(), 6000);
     }
 
     function wppEnterSend(e) {

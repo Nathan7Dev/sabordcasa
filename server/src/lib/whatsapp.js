@@ -115,8 +115,14 @@ export async function desconectar() {
 export async function enviarMensagem(telefone, texto) {
   if (_status !== 'connected') throw new Error('WhatsApp não conectado');
   const chatId = normalizarTelefone(telefone);
-  await client.sendMessage(chatId, texto);
-  // Notifica o dashboard para exibir a mensagem na conversa
+  console.log(`[whatsapp] enviando para ${chatId} — "${texto.substring(0, 40)}…"`);
+  try {
+    await client.sendMessage(chatId, texto);
+  } catch (err) {
+    console.error(`[whatsapp] sendMessage falhou para ${chatId}:`, err.message);
+    throw err;
+  }
+  console.log(`[whatsapp] enviado com sucesso para ${chatId}`);
   const digits = telefone.replace(/\D/g, '');
   _io?.to('admin').emit('whatsapp_sent', { to: digits, body: texto, timestamp: Date.now() / 1000 });
 }
