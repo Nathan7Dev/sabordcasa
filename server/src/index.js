@@ -53,6 +53,7 @@ const corsOptions = {
 };
 
 const app  = express();
+app.set('trust proxy', 1); // Railway usa proxy reverso — necessário para rate-limit e IPs reais
 const http = createServer(app);
 const io   = new Server(http, {
   cors: {

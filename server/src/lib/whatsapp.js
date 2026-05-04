@@ -18,6 +18,7 @@ function normalizarTelefone(tel) {
 function criarCliente() {
   const puppeteerOpts = {
     headless: true,
+    protocolTimeout: 20000, // Puppeteer falha em 20s em vez dos 180s padrão
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -145,13 +146,19 @@ export async function enviarMensagem(telefone, texto) {
   const chatId = normalizarTelefone(telefone);
   console.log(`[whatsapp] enviando para ${chatId}`);
 
-  await Promise.race([
-    client.sendMessage(chatId, texto),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ao enviar (15s)')), 15000)),
-  ]).catch(err => {
+  try {
+    await client.sendMessage(chatId, texto);
+  } catch (err) {
     console.error(`[whatsapp] sendMessage falhou (${chatId}):`, err.message);
+    // Sessão travada — reconecta automaticamente para o próximo envio
+    if (err.message.includes('timed out') || err.message.includes('timeout')) {
+      console.warn('[whatsapp] sessão instável detectada — reconectando em background');
+      _status = 'disconnected';
+      _io?.to('admin').emit('whatsapp_disconnected', { reason: 'sessão instável — reconectando' });
+      reconectar().catch(e => console.error('[whatsapp] falha ao reconectar:', e.message));
+    }
     throw err;
-  });
+  }
 
   console.log(`[whatsapp] mensagem enviada para ${chatId}`);
   const digits = telefone.replace(/\D/g, '');
