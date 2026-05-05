@@ -54,13 +54,23 @@ async function atualizarWebhook() {
 }
 
 // Cria a instância se não existir; sempre atualiza o webhook
+// Evolution API v2 retorna [{instanceName, connectionStatus, ...}]
+// Evolution API v1 retorna [{instance: {instanceName, state, ...}}]
+function nomeInstancia(item) {
+  return item?.instanceName ?? item?.instance?.instanceName ?? null;
+}
+function estadoInstancia(item) {
+  return item?.connectionStatus ?? item?.instance?.state ?? item?.instance?.connectionStatus ?? null;
+}
+
 async function garantirInstancia() {
   const lista = await apiFetch('/instance/fetchInstances').catch(err => {
     console.error('[whatsapp] fetchInstances falhou:', err.message);
     return [];
   });
-  console.log('[whatsapp] instâncias:', JSON.stringify(lista?.map?.(i => i.instance?.instanceName)));
-  const existe = Array.isArray(lista) && lista.some(i => i.instance?.instanceName === INST());
+  const nomes = Array.isArray(lista) ? lista.map(nomeInstancia) : [];
+  console.log('[whatsapp] instâncias encontradas:', JSON.stringify(nomes));
+  const existe = nomes.includes(INST());
 
   if (!existe) {
     const url = webhookUrl();
@@ -84,9 +94,9 @@ async function garantirInstancia() {
 
 async function sincronizarStatus() {
   const lista = await apiFetch('/instance/fetchInstances').catch(() => []);
-  const inst  = Array.isArray(lista) && lista.find(i => i.instance?.instanceName === INST());
+  const inst  = Array.isArray(lista) && lista.find(i => nomeInstancia(i) === INST());
   if (!inst) return;
-  const state = inst.instance?.state ?? inst.instance?.connectionStatus;
+  const state = estadoInstancia(inst);
   console.log(`[whatsapp] estado atual da instância: ${state}`);
   if (state === 'open') {
     _status = 'connected';
