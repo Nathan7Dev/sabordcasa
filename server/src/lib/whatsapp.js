@@ -68,13 +68,24 @@ async function garantirInstancia() {
     console.error('[whatsapp] fetchInstances falhou:', err.message);
     return [];
   });
-  const nomes = Array.isArray(lista) ? lista.map(nomeInstancia) : [];
-  console.log('[whatsapp] instâncias encontradas:', JSON.stringify(nomes));
+  // Log do JSON bruto para diagnóstico
+  console.log('[whatsapp] fetchInstances raw:', JSON.stringify(lista));
+
+  const arr   = Array.isArray(lista) ? lista : (lista ? [lista] : []);
+  const nomes = arr.map(nomeInstancia);
+  console.log('[whatsapp] nomes detectados:', JSON.stringify(nomes));
   const existe = nomes.includes(INST());
 
-  if (!existe) {
-    const url = webhookUrl();
-    console.log(`[whatsapp] criando instância "${INST()}" — webhook: ${url}`);
+  if (existe) {
+    console.log(`[whatsapp] instância "${INST()}" encontrada — atualizando webhook`);
+    await atualizarWebhook();
+    return;
+  }
+
+  // Tenta criar; se receber 409/403 = já existe, só atualiza webhook
+  const url = webhookUrl();
+  console.log(`[whatsapp] criando instância "${INST()}" — webhook: ${url}`);
+  try {
     const resp = await apiFetch('/instance/create', {
       method: 'POST',
       body: JSON.stringify({
@@ -86,9 +97,13 @@ async function garantirInstancia() {
       }),
     });
     console.log('[whatsapp] instância criada:', JSON.stringify(resp));
-  } else {
-    console.log(`[whatsapp] instância "${INST()}" já existe — atualizando webhook`);
-    await atualizarWebhook();
+  } catch (err) {
+    if (err.message.includes('403') || err.message.includes('409')) {
+      console.log('[whatsapp] instância já existe (403/409) — atualizando webhook');
+      await atualizarWebhook();
+    } else {
+      throw err;
+    }
   }
 }
 
