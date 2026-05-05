@@ -132,7 +132,6 @@ export async function initWhatsApp(io) {
     return;
   }
   try {
-    await garantirInstancia();
     await sincronizarStatus();
     console.log(`[whatsapp] status inicial: ${_status}`);
   } catch (err) {
@@ -141,31 +140,73 @@ export async function initWhatsApp(io) {
 }
 
 // ─── Reconectar (exibe QR se necessário) ─────────────────────────────────────
+function extrairQR(data) {
+  return (
+    data?.base64 ??
+    data?.qrcode?.base64 ??
+    data?.qr?.base64 ??
+    (typeof data?.code === 'string' && data.code.startsWith('data:') ? data.code : null)
+  );
+}
+
 export async function reconectar() {
   if (!ativo()) throw new Error('Evolution API não configurada');
   _status    = 'connecting';
   _qrDataUrl = null;
+
   try {
-    await garantirInstancia();
-    const data = await apiFetch(`/instance/connect/${INST()}`);
-    console.log('[whatsapp] /instance/connect resposta:', JSON.stringify(data));
+    // Deleta instância existente para recriar com webhook correto
+    await apiFetch(`/instance/delete/${INST()}`, { method: 'DELETE' }).catch(() => {});
+    console.log('[whatsapp] instância anterior removida — recriando');
 
-    // Evolution API v2 pode retornar o QR em diferentes estruturas
-    const qrBase64 =
-      data?.base64 ??
-      data?.qrcode?.base64 ??
-      data?.qr?.base64 ??
-      (typeof data?.code === 'string' && data.code.startsWith('data:') ? data.code : null);
+    const url = webhookUrl();
+    const criado = await apiFetch('/instance/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        instanceName: INST(),
+        qrcode:       true,
+        integration:  'WHATSAPP-BAILEYS',
+        ...(url ? {
+          webhook: {
+            url,
+            enabled:  true,
+            byEvents: false,
+            base64:   false,
+            events:   ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
+          },
+        } : {}),
+      }),
+    });
+    console.log('[whatsapp] instância criada:', JSON.stringify(criado));
 
-    if (qrBase64) {
+    // QR pode vir direto na resposta do create
+    const qrCreate = extrairQR(criado) ?? extrairQR(criado?.qrcode) ?? extrairQR(criado?.hash);
+    if (qrCreate) {
       _status    = 'qr';
-      _qrDataUrl = qrBase64;
-      _io?.to('admin').emit('whatsapp_qr', { qr: _qrDataUrl });
-      console.log('[whatsapp] QR emitido para o dashboard');
-    } else {
-      console.log('[whatsapp] sem QR na resposta — sincronizando status');
-      await sincronizarStatus();
+      _qrDataUrl = qrCreate;
+      _io?.to('admin').emit('whatsapp_qr', { qr: qrCreate });
+      console.log('[whatsapp] QR extraído da resposta do create');
+      return;
     }
+
+    // Polling: tenta buscar QR a cada 2s por até 30s
+    console.log('[whatsapp] aguardando QR via polling...');
+    for (let i = 0; i < 15; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const conn = await apiFetch(`/instance/connect/${INST()}`).catch(() => null);
+      console.log(`[whatsapp] poll ${i + 1}/15:`, JSON.stringify(conn));
+      const qr = extrairQR(conn) ?? extrairQR(conn?.qrcode);
+      if (qr) {
+        _status    = 'qr';
+        _qrDataUrl = qr;
+        _io?.to('admin').emit('whatsapp_qr', { qr });
+        console.log('[whatsapp] QR obtido por polling');
+        return;
+      }
+    }
+    // Se não veio por polling, aguarda via webhook QRCODE_UPDATED
+    console.log('[whatsapp] QR não obtido por polling — aguardando evento QRCODE_UPDATED');
+
   } catch (err) {
     _status = 'disconnected';
     console.error('[whatsapp] reconectar falhou:', err.message);
