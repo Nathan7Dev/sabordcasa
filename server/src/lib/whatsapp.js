@@ -212,6 +212,7 @@ export function handleEvolutionWebhook(event, data) {
     _io?.to('admin').emit('whatsapp_qr', { qr: _qrDataUrl });
 
   } else if (ev === 'connection.update') {
+    console.log('[whatsapp] connection.update data:', JSON.stringify(data));
     const state = data?.state ?? data?.instance?.state;
     if (state === 'open') {
       _status    = 'connected';
