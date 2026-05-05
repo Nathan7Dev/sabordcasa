@@ -133,6 +133,12 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use((req, _res, next) => { req.io = io; next(); });
 
+// Normaliza barras duplas em URLs (ex: //api/... → /api/...)
+app.use((req, _res, next) => {
+  if (req.url.includes('//')) req.url = req.url.replace(/\/+/g, '/');
+  next();
+});;
+
 // ─── Rotas ───────────────────────────────────────────────────────────────────
 app.get('/api', (_req, res) => {
   res.json({ servico: "Sabor D'Casa API", status: 'online' });

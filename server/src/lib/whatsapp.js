@@ -37,27 +37,30 @@ function webhookUrl() {
 async function atualizarWebhook() {
   const url = webhookUrl();
   if (!url) return;
+  // Evolution API v2: body direto com "enabled"
+  const body = JSON.stringify({
+    url,
+    enabled: true,
+    events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
+  });
   try {
-    await apiFetch(`/webhook/set/${INST()}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        url,
-        webhook_by_events: false,
-        webhook_base64:    false,
-        events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
-      }),
-    });
+    await apiFetch(`/webhook/set/${INST()}`, { method: 'POST', body });
     console.log(`[whatsapp] webhook atualizado → ${url}`);
   } catch (err) {
-    console.warn('[whatsapp] falha ao atualizar webhook:', err.message);
+    console.warn('[whatsapp] falha /webhook/set:', err.message, '— tentando /webhook/', INST());
+    try {
+      await apiFetch(`/webhook/${INST()}`, { method: 'PUT', body });
+      console.log(`[whatsapp] webhook atualizado via PUT → ${url}`);
+    } catch (err2) {
+      console.warn('[whatsapp] falha ao atualizar webhook:', err2.message);
+    }
   }
 }
 
 // Cria a instância se não existir; sempre atualiza o webhook
-// Evolution API v2 retorna [{instanceName, connectionStatus, ...}]
-// Evolution API v1 retorna [{instance: {instanceName, state, ...}}]
+// Evolution API v2 usa "name"; v1 usa "instanceName" ou "instance.instanceName"
 function nomeInstancia(item) {
-  return item?.instanceName ?? item?.instance?.instanceName ?? null;
+  return item?.name ?? item?.instanceName ?? item?.instance?.instanceName ?? null;
 }
 function estadoInstancia(item) {
   return item?.connectionStatus ?? item?.instance?.state ?? item?.instance?.connectionStatus ?? null;
